@@ -1,0 +1,15 @@
+[
+{"region":"CAL","states":["CA"]},
+{"region":"CENT","states":["ND","SD","MN","IA","MO","NE","KS","OK"]},
+{"region":"FLA","states":["FL"]},
+{"region":"MIDW","states":["MN","MI","IL","IN","KY","MS","AR","LA","WI"]},
+{"region":"MIDA","states":["PA","OH","WV","MD","DE","NJ","VA"]},
+{"region":"NE","states":["ME","VT","NH","MA","CT","RI"]},
+{"region":"CAR","states":["NC","SC"]},
+{"region":"NW","states":["WA","OR","ID","MT","WY","NV","UT","CO"]},
+{"region":"SE","states":["MS","AL","GA"]},
+{"region":"SW","states":["AZ","NM"]},
+{"region":"TEN","states":["TN"]},
+{"region":"TEX","states":["TX"]},
+{"region":"NY","states":["NY"]}
+]
