@@ -46,16 +46,6 @@ fig = px.choropleth(italy_last, locations="Country",
 df_state = pd.DataFrame(states_data)
 df_state = df_state.explode('states')
 
-
-"""
-date_selector = dcc.DatePickerSingle(
-        id='my-date-picker-single',
-        min_date_allowed=frames['NY'].index.date.min(),
-        max_date_allowed=frames['NY'].index.date.max(),
-        date=frames['NY'].index.date.max()
-    )
-"""
-
 #
 
 news_api = 'da8e2e705b914f9f86ed2e9692e66012'
@@ -139,12 +129,23 @@ dropdown_model = dcc.Dropdown(id='model-select-dropdown',
                     {'label': 'Prophet', 'value': 'prophet'},
                     {'label': 'LSTM', 'value': 'lstm'},
                 ],
-                value='sarimax',
-                clearable=False,
+                #value='sarimax',
+                placeholder="Select a Model",
+                #clearable=False,
                 style={'height': '30px', 'width': '200px'}
                # labelStyle={'display': 'inline-block'},
                 #style={'align-content':'center'}
             )
+
+years_dropdown =  dcc.Dropdown(
+                        id='dropdown_polar_chart',
+                        options=[{'label':str(k),'value':str(k)} for k in [k for k in range(2015,frames['NY'].index.year.max()+1)  ]   ],
+                        value=['2020'],
+                        style={'height': '30px', 'width': '400px'},
+                        clearable = False,
+                        multi=True
+                    )  
+
 
 
 app.layout = html.Div(children=[
@@ -169,6 +170,9 @@ app.layout = html.Div(children=[
                     
                                   ), 
 
+
+
+                                #thisa is for date and clock and slider and the main graph
                                    # Define the left element
                                     html.Div(className='eight columns div-for-charts bg-grey',
                                             children=[
@@ -194,6 +198,7 @@ app.layout = html.Div(children=[
                                               
                                   ]),
 
+                                #this is for the choropeth
                                     html.Div(className='eight columns div-user-controls',
                                         children = [
                                             html.P('Enter a range for cumulative consumption data or a single end date for single day'),
@@ -217,7 +222,27 @@ app.layout = html.Div(children=[
                                         ]
                     
                                   ), 
-                                ])
+
+
+                                html.Div(className='fasd-user-controls',
+                                        children = [
+                                            html.P('Consumption per season'),
+                                            html.P('Pick a year or multiple years to see consumption varied by seasons'),
+                                            years_dropdown,
+                                            dcc.Graph(id='polar_chart',
+                                                config={'displayModeBar': False},
+                                                animate=None       
+                                                )
+                                            #html.Div(id="news", children=update_news()),
+                                        ]
+                    
+                                  ), 
+
+
+
+                                ]),
+
+                                
 ]
                       )
 
@@ -281,44 +306,10 @@ def clear_date(n_clicks, current_selected_date):
 
 
 
-"""
-@app.callback(Output('geographic_map', 'figure'),
-              [Input('my-date-picker-single', 'date')])
-def update_geographic_graph(date):
-    # #to get the total consumption chart daily
-    values = {}
-    for region in df_state['region'].unique():
-          values[region] = sum(frames[region].loc[date].Consumption)
-
-    df_state['consumption_value'] = df_state['region'].map(values)
-
-
-# print(df_state)
-    figa = px.choropleth(df_state,
-                        locations="states", locationmode="USA-states",
-                        title=f'Distribution by Region for {date}', color="consumption_value", scope="usa").update_layout(
-                xaxis_showgrid=False,
-                yaxis_showgrid=True,
-                #autosize=False,
-                #width=500,
-                #height=500,
-                paper_bgcolor="#1a1c23", 
-                plot_bgcolor="#1a1c23").update_layout(
-                    geo=dict(bgcolor= "#1a1c23", 
-                    lakecolor="#1a1c23",
-                    landcolor='rgba(51,17,0,0.2)'))
-
-    return figa 
-"""
-
-
 @app.callback(Output('timeseries', 'figure'),
               [Input('tseries-select-dropdown', 'value')])
 def update_graph(selected_dropdown_value):
-    #if selected_dropdown_value == 'ca':
     temp_df = frames[selected_dropdown_value]
-    #temp_df['color'] = 'red'
-
     fig=px.line(temp_df,
             x='Date',
             y='Consumption',
@@ -332,17 +323,9 @@ def update_graph(selected_dropdown_value):
             paper_bgcolor="#1a1c23", 
             plot_bgcolor="#1a1c23",
             yaxis=dict(
-                #title_text="Y-axis Title",
-                #ticktext=["Very long label", "long label", "3", "label"],
-                #tickvals=[1, 2, 3, 4],
-                #tickmode="array",
                 titlefont=dict(size=10),
                     ),
             xaxis =dict(
-                #title_text="Y-axis Title",
-                #ticktext=["Very long label", "long label", "3", "label"],
-                #tickvals=[1, 2, 3, 4],
-                #tickmode="array",
                 titlefont=dict(size=10),
                 color="#3E3F40"
                     )
@@ -364,6 +347,37 @@ def update_graph(selected_dropdown_value):
             )
     return fig 
 
+#update polar chart
+@app.callback(Output('polar_chart', 'figure'),
+              [Input('dropdown_polar_chart', 'value')])
+def update_polar_chart(years):
+    seasons = {
+    'winter': [12, 1, 2],
+    'spring': [3, 4, 5],
+    'summer': [6, 7, 8],
+    'fall': [9, 10, 11]
+}
+    consumption_dict = {}
+    for region in df_state['region'].unique():
+        df = frames[region]
+        consumption_dict[region] = {}
+        consumption_dict[region]['summer'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['winter']))].Consumption)
+        consumption_dict[region]['spring'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['spring']))].Consumption)
+        consumption_dict[region]['fall'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['summer']))].Consumption)
+        consumption_dict[region]['winter'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['fall']))].Consumption)
+
+    df = pd.DataFrame([(k,k1,v1) for k,v in consumption_dict.items() for k1,v1 in v.items()], columns = ['region','season','consumption'])
+    
+    fig = px.bar_polar(df, r="consumption", theta="region", color="season", template="plotly_dark",
+                 color_discrete_sequence= ['#ffffb2','#fecc5c','#fd8d3c','#e31a1c']).update_layout(
+            xaxis_showgrid=False,
+            yaxis_showgrid=True,
+            #autosize=False,
+            #width=500,
+            #height=500,
+            paper_bgcolor=app_colors['background']).update_polars(bgcolor=app_colors['background'])
+    return fig
+
 
 # Callback to update news
 @app.callback(Output("news", "children"), [Input("i_news", "n_intervals")])
@@ -376,20 +390,8 @@ def update_news_div(n):
 def update_time(n):
     return datetime.datetime.now().strftime("%H:%M:%S")
 
-
-# @app.callback(Output('timeseries', 'figure'),
-#             [Input('graph-update', 'n_intervals')])
-
-
 # Run the app
 if __name__ == '__main__':
     app.run_server(debug=True)
 
 
-"""
-
-To the extent you feel comfortable, please introduce yourself to your classmates and to the professor, and describe a little of your background.
-Share your e-mail address.
-Do you have any experience with Geospatial Intelligence or GEOINT software (ArcGIS, Google Earth, etc.)? If so, to what extent?
-What skills/knowledge would you hope to gain from this course, and how might you be able to apply them long-term to a specific career path?
-"""
