@@ -5,7 +5,7 @@ import dash_core_components as dcc
 import plotly.express as px
 import requests 
 import datetime
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 #EBA.SE-ALL.D.H
 #read states data for map
@@ -47,17 +47,14 @@ df_state = pd.DataFrame(states_data)
 df_state = df_state.explode('states')
 
 
-
-
-
+"""
 date_selector = dcc.DatePickerSingle(
         id='my-date-picker-single',
         min_date_allowed=frames['NY'].index.date.min(),
         max_date_allowed=frames['NY'].index.date.max(),
         date=frames['NY'].index.date.max()
     )
-
-
+"""
 
 #
 
@@ -156,7 +153,7 @@ app.layout = html.Div(children=[
                                children=[
                                    #interval component for news update every fifteen minutes
                                    #CHANGE THIS
-                                   dcc.Interval(id="i_news", interval= 15* 6000, n_intervals=0),
+                                   dcc.Interval(id="i_news", interval= 45* 6000, n_intervals=0),
                                    # Interval component for live clock
                                    dcc.Interval(id="interval", interval=1 * 1000, n_intervals=0),
                                    
@@ -198,8 +195,21 @@ app.layout = html.Div(children=[
                                   ]),
 
                                     html.Div(className='eight columns div-user-controls',
-                                        children = [  
-                                            date_selector,
+                                        children = [
+                                            html.P('Enter a range for cumulative consumption data or a single end date for single day'),
+                                            dcc.DatePickerRange(
+                                                    id='my-date-picker-single',
+                                                    min_date_allowed=frames['NY'].index.date.min(),
+                                                    max_date_allowed=frames['NY'].index.date.max(),
+                                                    start_date = None,
+                                                    initial_visible_month=frames['NY'].index.date.max(),
+                                                    end_date=frames['NY'].index.date.max(),
+                                                    start_date_placeholder_text='Start Date'
+                                                ),
+                                             html.Button(
+                                                    'Clear start date',
+                                                    id='button'
+                                                ),
                                             dcc.Graph(id='geographic_map',
                                                 config={'displayModeBar': False},
                                                 animate=None        
@@ -212,22 +222,31 @@ app.layout = html.Div(children=[
                       )
 
 
-
 @app.callback(Output('geographic_map', 'figure'),
-              [Input('my-date-picker-single', 'date')])
-def update_geographic_graph(date):
-    # #to get the total consumption chart daily
-    values = {}
-    for region in df_state['region'].unique():
-          values[region] = sum(frames[region].loc[date].Consumption)
-
-    df_state['daily_value'] = df_state['region'].map(values)
+              [Input('my-date-picker-single', 'start_date'),
+              Input('my-date-picker-single', 'end_date')])
+def update_geographic_graph(start_date,end_date):
+# #to get the total consumption chart daily
+    if start_date == None:
+        title = f'Distribution by Region of {end_date}'
+        values = {}
+        for region in df_state['region'].unique():
+                values[region] = sum(frames[region].loc[end_date].Consumption)
+                df_state['consumption_value'] = df_state['region'].map(values)
+    else:
+        title = f'Distribution by Region from {start_date} to {end_date}'
+        values = {}
+        for region in df_state['region'].unique():
+                values[region] = sum(frames[region].sort_index().loc[start_date:end_date].Consumption)
+                df_state['consumption_value'] = df_state['region'].map(values)
 
     
 # print(df_state)
     figa = px.choropleth(df_state,
                         locations="states", locationmode="USA-states",
-                        title=f'Distribution by Region for {date}', color="daily_value", scope="usa").update_layout(
+                        #color_continuous_scale="Reds",
+                        title=title, hover_data= ["consumption_value","region"],
+                        color="consumption_value",  scope="usa").update_layout(
                 xaxis_showgrid=False,
                 yaxis_showgrid=True,
                 #autosize=False,
@@ -241,6 +260,58 @@ def update_geographic_graph(date):
 
     return figa 
 
+#clear start date 
+@app.callback(
+    Output('my-date-picker-single', 'start_date'),
+    [
+        Input('button', 'n_clicks'),
+    ],
+    [
+        State('my-date-picker-single', 'start_date'),
+    ]
+)
+def clear_date(n_clicks, current_selected_date):
+    ''' clears the date when button is clicked'''
+    if (n_clicks is not None) and (n_clicks > 0):
+        # =============================== neither of both following lines work 
+        # return ''
+        return None
+    else:
+        return current_selected_date
+
+
+
+"""
+@app.callback(Output('geographic_map', 'figure'),
+              [Input('my-date-picker-single', 'date')])
+def update_geographic_graph(date):
+    # #to get the total consumption chart daily
+    values = {}
+    for region in df_state['region'].unique():
+          values[region] = sum(frames[region].loc[date].Consumption)
+
+    df_state['consumption_value'] = df_state['region'].map(values)
+
+
+# print(df_state)
+    figa = px.choropleth(df_state,
+                        locations="states", locationmode="USA-states",
+                        title=f'Distribution by Region for {date}', color="consumption_value", scope="usa").update_layout(
+                xaxis_showgrid=False,
+                yaxis_showgrid=True,
+                #autosize=False,
+                #width=500,
+                #height=500,
+                paper_bgcolor="#1a1c23", 
+                plot_bgcolor="#1a1c23").update_layout(
+                    geo=dict(bgcolor= "#1a1c23", 
+                    lakecolor="#1a1c23",
+                    landcolor='rgba(51,17,0,0.2)'))
+
+    return figa 
+"""
+
+
 @app.callback(Output('timeseries', 'figure'),
               [Input('tseries-select-dropdown', 'value')])
 def update_graph(selected_dropdown_value):
@@ -252,8 +323,6 @@ def update_graph(selected_dropdown_value):
             x='Date',
             y='Consumption',
             title='Daily Consumption'
-            #template='plotly_dark'
-            #template ='ggplot2'
             ).update_layout(
             xaxis_showgrid=False,
             yaxis_showgrid=True,
