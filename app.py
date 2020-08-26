@@ -6,7 +6,6 @@ import plotly.express as px
 import requests 
 import datetime
 from dash.dependencies import Input, Output, State
-
 #EBA.SE-ALL.D.H
 #read states data for map
 import json
@@ -16,6 +15,12 @@ import json
 with open('states.json') as f:
     states_data = json.load(f)
 
+df_state = pd.DataFrame(states_data)
+df_state = df_state.explode('states')
+#adding states coordinates
+df2 = pd.read_csv('states_coordinates.csv')
+df2.drop('city', axis=1, inplace=True)
+df_states_main = df_state.merge(df2, on='states')
 
 #make a dictionary of all the dataframes
 frames = {}
@@ -43,8 +48,7 @@ fig = px.choropleth(italy_last, locations="Country",
                     title='Regions with Positive Cases')
 """
 
-df_state = pd.DataFrame(states_data)
-df_state = df_state.explode('states')
+
 
 #
 
@@ -160,6 +164,8 @@ app.layout = html.Div(children=[
                                    
                                    dcc.Interval(id='graph_update', interval = 60*6000, n_intervals=0),
                                    
+                                   dcc.Interval(id='weather_update', interval = 60*6000, n_intervals=0),
+
                                    html.Div(className='four columns div-user-controls',
                                         children = [
                                             html.H2('Forecasting - New York Electricity Consumption'),
@@ -224,6 +230,41 @@ app.layout = html.Div(children=[
                                   ), 
 
 
+                                    #add the two choropeths here 
+
+                                html.Div(className='real-time-maps',
+                                children=[
+                                    
+                                  html.P('Updated temperature and consumption data hourly'),
+
+                                  html.Div(className="row2",
+                                            children = [
+                                            html.Div([
+                                                html.H3('Column 1'),
+                                                dcc.Graph(id='consumption_graph',
+                                                    config={'displayModeBar': False},
+                                                    animate=None       
+                                                    )
+                                            ], className="six columns"),
+
+                                            html.Div([
+                                                html.H3('asddd'),
+                                                dcc.Graph(id='weather_graph',
+                                                    config={'displayModeBar': False},
+                                                    animate=None       
+                                                    )
+                                            ], className="six columns"),
+                                        ]),
+                                ]
+                                
+                                ),
+
+
+
+
+
+
+
                                 html.Div(className='fasd-user-controls',
                                         children = [
                                             html.P('Consumption per season'),
@@ -232,7 +273,9 @@ app.layout = html.Div(children=[
                                             dcc.Graph(id='polar_chart',
                                                 config={'displayModeBar': False},
                                                 animate=None       
-                                                )
+                                                ),
+
+                                            
                                             #html.Div(id="news", children=update_news()),
                                         ]
                     
@@ -257,14 +300,15 @@ def update_geographic_graph(start_date,end_date):
         values = {}
         for region in df_state['region'].unique():
                 values[region] = sum(frames[region].loc[end_date].Consumption)
-                df_state['consumption_value'] = df_state['region'].map(values)
+        df_state['consumption_value'] = df_state['region'].map(values)
     else:
         title = f'Distribution by Region from {start_date} to {end_date}'
         values = {}
         for region in df_state['region'].unique():
                 values[region] = sum(frames[region].sort_index().loc[start_date:end_date].Consumption)
-                df_state['consumption_value'] = df_state['region'].map(values)
+        df_state['consumption_value'] = df_state['region'].map(values)
 
+    print(df_state)
     
 # print(df_state)
     figa = px.choropleth(df_state,
@@ -281,7 +325,13 @@ def update_geographic_graph(start_date,end_date):
                 plot_bgcolor="#1a1c23").update_layout(
                     geo=dict(bgcolor= "#1a1c23", 
                     lakecolor="#1a1c23",
-                    landcolor='rgba(51,17,0,0.2)'))
+                    landcolor='rgba(51,17,0,0.2)')
+                    )
+                    # .add_scattergeo(
+                    #             locations = df_state["states"], 
+                    #             locationmode = 'USA-states',
+                    #             text = df_state["states"], 
+                    #             mode = "text")
 
     return figa 
 
@@ -360,11 +410,12 @@ def update_polar_chart(years):
     consumption_dict = {}
     for region in df_state['region'].unique():
         df = frames[region]
+        df = df[(df.index.year.isin(years))]
         consumption_dict[region] = {}
-        consumption_dict[region]['summer'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['winter']))].Consumption)
-        consumption_dict[region]['spring'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['spring']))].Consumption)
-        consumption_dict[region]['fall'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['summer']))].Consumption)
-        consumption_dict[region]['winter'] = sum(df[(df.index.year.isin(years)) & (df.index.month.isin(seasons['fall']))].Consumption)
+        consumption_dict[region]['summer'] = sum(df[(df.index.month.isin(seasons['winter']))].Consumption)
+        consumption_dict[region]['spring'] = sum(df[(df.index.month.isin(seasons['spring']))].Consumption)
+        consumption_dict[region]['fall'] = sum(df[(df.index.month.isin(seasons['summer']))].Consumption)
+        consumption_dict[region]['winter'] = sum(df[(df.index.month.isin(seasons['fall']))].Consumption)
 
     df = pd.DataFrame([(k,k1,v1) for k,v in consumption_dict.items() for k1,v1 in v.items()], columns = ['region','season','consumption'])
     
@@ -378,6 +429,86 @@ def update_polar_chart(years):
             paper_bgcolor=app_colors['background']).update_polars(bgcolor=app_colors['background'])
     return fig
 
+#weather update
+@app.callback([Output("weather_graph", "figure"), 
+              Output("consumption_graph", "figure")],
+             [Input("weather_update", "n_intervals")])
+def update_cholorpeth_realtime(n):
+    df = df_states_main 
+    temperatures = {}
+    weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
+    for state in df['states']:
+        latitude = df.loc[df['states'] == state, 'latitude'].iloc[0]
+        longitude = df.loc[df['states'] == state, 'longitude'].iloc[0]
+
+        url = f"http://api.openweathermap.org/data/2.5/weather?lat={latitude}&lon={longitude}&units=imperial&appid={weather_api_key}"
+        r = requests.get(url)
+        json_data = r.json()
+        temperatures[state] = json_data["main"]["temp"]
+
+    df['temperature'] = df['states'].map(temperatures)
+
+    consumptions = {}
+    eia_api_key = "565ac7c9b7e000e9f3f58590dd7b9ba1"
+
+    #get yesterdays date for the api call and give a time to get less data than desired
+    date = (datetime.datetime.now() -datetime.timedelta(days=1)).strftime("%Y%m%d") + 'T24Z'
+
+    for region in df['region'].unique():
+        url = 'http://api.eia.gov/series/?api_key=' + eia_api_key + \
+            '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={date}'
+
+        r = requests.get(url)
+        json_data = r.json()
+        consumptions[region] = json_data.get('series')[0].get('data')[-1][1]
+
+    
+    df['consumption'] = df['region'].map(consumptions)
+
+    title = 'Live Temperatures for each state'
+    fig_temp = px.choropleth(df,
+                    locations="states", locationmode="USA-states",
+                    color_continuous_scale="Viridis",
+                    #color_continuous_scale="Reds",
+                    title=title, hover_data= ["temperature","region"],
+                    color="temperature",  scope="usa").update_layout(
+            xaxis_showgrid=False,
+            yaxis_showgrid=True,
+            #autosize=False,
+            #width=500,
+            #height=500,
+            paper_bgcolor="#1a1c23", 
+            plot_bgcolor="#1a1c23").update_layout(
+                geo=dict(bgcolor= "#1a1c23", 
+                lakecolor="#1a1c23",
+                landcolor='rgba(51,17,0,0.2)')
+                )
+
+    
+    fig_consumption = px.choropleth(df,
+                locations="states", locationmode="USA-states",
+               # color_continuous_scale="Reds",
+                #color_continuous_scale="Reds",
+                title='Live Electricity Consumption for each region', hover_data= ["consumption","region"],
+                color="consumption",  scope="usa").update_layout(
+        xaxis_showgrid=False,
+        yaxis_showgrid=True,
+        #autosize=False,
+        #width=500,
+        #height=500,
+        paper_bgcolor="#1a1c23", 
+        plot_bgcolor="#1a1c23").update_layout(
+            geo=dict(bgcolor= "#1a1c23", 
+            lakecolor="#1a1c23",
+            landcolor='rgba(51,17,0,0.2)')
+            )
+
+
+    return fig_consumption, fig_temp 
+
+
+
+
 
 # Callback to update news
 @app.callback(Output("news", "children"), [Input("i_news", "n_intervals")])
@@ -389,6 +520,10 @@ def update_news_div(n):
 @app.callback(Output("live_clock", "children"), [Input("interval", "n_intervals")])
 def update_time(n):
     return datetime.datetime.now().strftime("%H:%M:%S")
+
+
+
+
 
 # Run the app
 if __name__ == '__main__':
