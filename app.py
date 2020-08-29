@@ -198,6 +198,36 @@ app.layout = html.Div(children=[
                                               
                                   ]),
 
+                                    html.Div(className='eight columns div-for-charts bg-grey model prediction',
+                                            children=[
+                                            #     dcc.Slider(id='slider',
+                                            #             min=0,
+                                            #             max=4,
+                                            #             marks={i: 'Label {}'.format(i) for i in range(5)},
+                                            #             value=5,
+                                            #         )  ,
+                                            #     dropdown_model,
+                                            #     dropdown,
+                                            #     html.P(
+                                            #         id="live_clock",
+                                            #         className="three-col",
+                                            #         children='Time : ' + datetime.datetime.now().strftime("%H:%M:%S")
+                                            #                  #style={'text-align':'center'}
+                                            #             ),
+
+                                                dcc.Graph(id='model-prediction',
+                                                    config={'displayModeBar': False},
+                                                    animate=None,          
+                                                    )
+                                              
+                                  ]),
+
+
+                                #Plot the model here :?
+
+
+
+
                                 #this is for the choropeth
                                     html.Div(className='eight columns div-user-controls',
                                         children = [
@@ -228,14 +258,13 @@ app.layout = html.Div(children=[
 
                                 html.Div(className='real-time-maps',
                                 children=[
-                                    
-                                  html.P(id ="last_update"),
 
+                                  html.P(id ="last_update"),
                                   html.Div(
                                                         id="top_bar", className="row div-top-bar"#, children=get_top_bar()
                                                     ),
 
-                                  html.Div(className="row2",
+                                  html.Div(className="consumptionandtempclass",
                                             children = [
                                             html.Div([
                                                 #html.H3('Maybe plot additional Weather data? https://openweathermap.org/api/one-call-api'),
@@ -257,7 +286,8 @@ app.layout = html.Div(children=[
                                 
 
                                 ),
-                                html.Div(className='fasd-user-controls',
+                                
+                                html.Div(className='polarchartclass',
                                         children = [
                                             html.P('Consumption per season'),
                                             html.P('Pick a year or multiple years to see consumption varied by seasons'),

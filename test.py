@@ -90,3 +90,30 @@ import plotly.express as px
         #   html.Div(
         #             id="top_bar", className="row div-top-bar", children=get_top_bar()
         #         ),
+
+
+                                #         #this is for the choropeth
+                                #     html.Div(className='eight columns div-user-controls',
+                                #         children = [
+                                #             html.P('Enter a range for cumulative consumption data or a single end date for single day'),
+                                #             dcc.DatePickerRange(
+                                #                     id='my-date-picker-single',
+                                #                     min_date_allowed=frames['NY'].index.date.min(),
+                                #                     max_date_allowed=frames['NY'].index.date.max(),
+                                #                     start_date = None,
+                                #                     initial_visible_month=frames['NY'].index.date.max(),
+                                #                     end_date=frames['NY'].index.date.max(),
+                                #                     start_date_placeholder_text='Start Date'
+                                #                 ),
+                                #              html.Button(
+                                #                     'Clear start date',
+                                #                     id='button'
+                                #                 ),
+                                #             dcc.Graph(id='geographic_map',
+                                #                 config={'displayModeBar': False},
+                                #                 animate=None        
+                                #                 )
+                                #         ]
+                    
+                                #   ), 
+
