@@ -117,3 +117,52 @@ import plotly.express as px
                     
                                 #   ), 
 
+"""
+                            html.Div(className='two-bigger-charts',
+                                children=[
+                                  html.Div(className="two-maps",
+                                            children = [
+                                           html.Div(className='eight columns div-user-controls',
+                                        children = [
+                                            html.P('Enter a range for cumulative consumption data or a single end date for single day'),
+                                            dcc.DatePickerRange(
+                                                    id='my-date-picker-single',
+                                                    min_date_allowed=frames['NY'].index.date.min(),
+                                                    max_date_allowed=frames['NY'].index.date.max(),
+                                                    start_date = None,
+                                                    initial_visible_month=frames['NY'].index.date.max(),
+                                                    end_date=frames['NY'].index.date.max(),
+                                                    start_date_placeholder_text='Start Date'
+                                                ),
+                                             html.Button(
+                                                    'Clear start date',
+                                                    id='button'
+                                                ),
+                                            dcc.Graph(id='geographic_map',
+                                                config={'displayModeBar': False},
+                                                animate=None        
+                                                )
+                                        ]
+                    
+                                  ), 
+
+                                    html.Div(className='polarchartclass',
+                                        children = [
+                                            html.P('Consumption per season'),
+                                            html.P('Pick a year or multiple years to see consumption varied by seasons'),
+                                            years_dropdown,
+                                            dcc.Graph(id='polar_chart',
+                                                config={'displayModeBar': False},
+                                                animate=None       
+                                                ),
+
+                    
+                                            #html.Div(id="news", children=update_news()),
+                                        ]
+                                        ),
+
+                                        
+                       #         ]),
+
+
+"""

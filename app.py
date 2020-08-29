@@ -168,10 +168,7 @@ app.layout = html.Div(children=[
                                             html.P('''Visualising time series with Plotly - Dash'''),
                                             html.P('Electricity Distribution Region', style={'text-align':'center'}),
                                             html.Div(id="news", children=update_news()),
-                                        ]
-                    
-                                  ), 
-
+                                        ]), 
                                 #thisa is for date and clock and slider and the main graph
                                    # Define the left element
                                     html.Div(className='eight columns div-for-charts bg-grey',
@@ -196,9 +193,10 @@ app.layout = html.Div(children=[
                                                     animate=None,          
                                                     )
                                               
-                                  ]),
+                                  ]), 
+                                  
 
-                                    html.Div(className='eight columns div-for-charts bg-grey model prediction',
+                                    html.Div(className='eight columns div-for-charts bg-grey',
                                             children=[
                                             #     dcc.Slider(id='slider',
                                             #             min=0,
@@ -221,91 +219,68 @@ app.layout = html.Div(children=[
                                                     )
                                               
                                   ]),
+ ]),
 
 
-                                #Plot the model here :?
-
-
-
-
-                                #this is for the choropeth
-                                    html.Div(className='eight columns div-user-controls',
-                                        children = [
-                                            html.P('Enter a range for cumulative consumption data or a single end date for single day'),
-                                            dcc.DatePickerRange(
-                                                    id='my-date-picker-single',
-                                                    min_date_allowed=frames['NY'].index.date.min(),
-                                                    max_date_allowed=frames['NY'].index.date.max(),
-                                                    start_date = None,
-                                                    initial_visible_month=frames['NY'].index.date.max(),
-                                                    end_date=frames['NY'].index.date.max(),
-                                                    start_date_placeholder_text='Start Date'
-                                                ),
-                                             html.Button(
-                                                    'Clear start date',
-                                                    id='button'
-                                                ),
-                                            dcc.Graph(id='geographic_map',
-                                                config={'displayModeBar': False},
-                                                animate=None        
-                                                )
-                                        ]
-                    
-                                  ), 
-
-
-                                    #add the two choropeths here 
+                            #acumulative and polar charts
+                            html.Div(className='two-bigger-charts',
+                                children=[
+                                           html.Div(className='cumulative-geo-graph-and-polar-graph',
+                                                    children = [
+                                                        html.Div([
+                                                        html.P('Enter a range for cumulative consumption data or a single end date for single day'),
+                                                        dcc.DatePickerRange(
+                                                                id='my-date-picker-single',
+                                                                min_date_allowed=frames['NY'].index.date.min(),
+                                                                max_date_allowed=frames['NY'].index.date.max(),
+                                                                start_date = None,
+                                                                initial_visible_month=frames['NY'].index.date.max(),
+                                                                end_date=frames['NY'].index.date.max(),
+                                                                start_date_placeholder_text='Start Date'),
+                                                        html.Button(
+                                                                'Clear start date',
+                                                                id='button'),
+                                                        dcc.Graph(id='geographic_map',
+                                                            config={'displayModeBar': False},
+                                                            animate=None)
+                                                            ], className='six columns'),
+                                                    
+                                            html.Div([
+                                                    html.P('Consumption per season'),
+                                                    html.P('Pick a year or multiple years to see consumption varied by seasons'),
+                                                    years_dropdown,
+                                                    dcc.Graph(id='polar_chart',
+                                                        config={'displayModeBar': False},
+                                                        animate=None)
+                                                        ],className='six columns'),
+                                                                ]),
+                                     ]),
+                                
+                                #add the two choropeths here 
 
                                 html.Div(className='real-time-maps',
                                 children=[
-
                                   html.P(id ="last_update"),
-                                  html.Div(
-                                                        id="top_bar", className="row div-top-bar"#, children=get_top_bar()
-                                                    ),
-
+                                  html.Div(id="top_bar", className="row div-top-bar"),
                                   html.Div(className="consumptionandtempclass",
                                             children = [
                                             html.Div([
                                                 #html.H3('Maybe plot additional Weather data? https://openweathermap.org/api/one-call-api'),
                                                 dcc.Graph(id='consumption_graph',
                                                     config={'displayModeBar': False},
-                                                    animate=None       
-                                                    )
+                                                    animate=None)
                                             ], className="six columns"),
 
                                             html.Div([
                                                 #html.H3('asddd'),
                                                 dcc.Graph(id='weather_graph',
                                                     config={'displayModeBar': False},
-                                                    animate=None       
-                                                    )
-                                            ], className="six columns"),
+                                                    animate=None)], className="six columns"),
                                         ]),
-                                ]
+                                        ]),
                                 
 
-                                ),
-                                
-                                html.Div(className='polarchartclass',
-                                        children = [
-                                            html.P('Consumption per season'),
-                                            html.P('Pick a year or multiple years to see consumption varied by seasons'),
-                                            years_dropdown,
-                                            dcc.Graph(id='polar_chart',
-                                                config={'displayModeBar': False},
-                                                animate=None       
-                                                ),
 
-                                            
-                                            #html.Div(id="news", children=update_news()),
-                                        ]
-                    
-                                  ), 
-
-
-
-                                ]),
 
                                 
 ]
