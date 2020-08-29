@@ -61,8 +61,8 @@ news_api = '46301e508cbb4ecca4096c1f9d407557'
 # API Requests for news div
 
 news_requests = requests.get(
-    f"http://newsapi.org/v2/everything?q=electricity&apiKey={news_api}"
-     #f"http://newsapi.org/v2/top-headlines?country=us&category=business&apiKey={news_api}"
+    #f"http://newsapi.org/v2/everything?q=electricity&apiKey={news_api}"
+    f"http://newsapi.org/v2/top-headlines?country=us&category=business&apiKey={news_api}"
 
 )
 
@@ -153,7 +153,6 @@ years_dropdown =  dcc.Dropdown(
 
 
 app.layout = html.Div(children=[
-
                       html.Div(className='row',  # Define the row element
                                children=[
                                    #interval component for news update every fifteen minutes
@@ -161,11 +160,8 @@ app.layout = html.Div(children=[
                                    dcc.Interval(id="i_news", interval= 45* 6000, n_intervals=0),
                                    # Interval component for live clock
                                    dcc.Interval(id="interval", interval=1 * 1000, n_intervals=0),
-                                   
                                    dcc.Interval(id='graph_update', interval = 60*6000, n_intervals=0),
-                                   
                                    dcc.Interval(id='weather_update', interval = 60*6000, n_intervals=0),
-
                                    html.Div(className='four columns div-user-controls',
                                         children = [
                                             html.H2('Forecasting - New York Electricity Consumption'),
@@ -175,8 +171,6 @@ app.layout = html.Div(children=[
                                         ]
                     
                                   ), 
-
-
 
                                 #thisa is for date and clock and slider and the main graph
                                    # Define the left element
@@ -235,12 +229,16 @@ app.layout = html.Div(children=[
                                 html.Div(className='real-time-maps',
                                 children=[
                                     
-                                  html.P('Updated temperature and consumption data hourly'),
+                                  html.P(id ="last_update"),
+
+                                  html.Div(
+                                                        id="top_bar", className="row div-top-bar"#, children=get_top_bar()
+                                                    ),
 
                                   html.Div(className="row2",
                                             children = [
                                             html.Div([
-                                                html.H3('Column 1'),
+                                                #html.H3('Maybe plot additional Weather data? https://openweathermap.org/api/one-call-api'),
                                                 dcc.Graph(id='consumption_graph',
                                                     config={'displayModeBar': False},
                                                     animate=None       
@@ -248,7 +246,7 @@ app.layout = html.Div(children=[
                                             ], className="six columns"),
 
                                             html.Div([
-                                                html.H3('asddd'),
+                                                #html.H3('asddd'),
                                                 dcc.Graph(id='weather_graph',
                                                     config={'displayModeBar': False},
                                                     animate=None       
@@ -257,14 +255,8 @@ app.layout = html.Div(children=[
                                         ]),
                                 ]
                                 
+
                                 ),
-
-
-
-
-
-
-
                                 html.Div(className='fasd-user-controls',
                                         children = [
                                             html.P('Consumption per season'),
@@ -308,7 +300,6 @@ def update_geographic_graph(start_date,end_date):
                 values[region] = sum(frames[region].sort_index().loc[start_date:end_date].Consumption)
         df_state['consumption_value'] = df_state['region'].map(values)
 
-    print(df_state)
     
 # print(df_state)
     figa = px.choropleth(df_state,
@@ -338,12 +329,8 @@ def update_geographic_graph(start_date,end_date):
 #clear start date 
 @app.callback(
     Output('my-date-picker-single', 'start_date'),
-    [
-        Input('button', 'n_clicks'),
-    ],
-    [
-        State('my-date-picker-single', 'start_date'),
-    ]
+    [Input('button', 'n_clicks')],
+    [State('my-date-picker-single', 'start_date')]
 )
 def clear_date(n_clicks, current_selected_date):
     ''' clears the date when button is clicked'''
@@ -429,9 +416,13 @@ def update_polar_chart(years):
             paper_bgcolor=app_colors['background']).update_polars(bgcolor=app_colors['background'])
     return fig
 
-#weather update
+
+
+#weather  and consumption update
 @app.callback([Output("weather_graph", "figure"), 
-              Output("consumption_graph", "figure")],
+              Output("consumption_graph", "figure"),
+              Output("top_bar", "children"),
+              Output("last_update", "children")],
              [Input("weather_update", "n_intervals")])
 def update_cholorpeth_realtime(n):
     df = df_states_main 
@@ -465,12 +456,11 @@ def update_cholorpeth_realtime(n):
     
     df['consumption'] = df['region'].map(consumptions)
 
-    title = 'Live Temperatures for each state'
     fig_temp = px.choropleth(df,
                     locations="states", locationmode="USA-states",
                     color_continuous_scale="Viridis",
                     #color_continuous_scale="Reds",
-                    title=title, hover_data= ["temperature","region"],
+                    title='Live Temperatures for each state  Current time, Unix, UTC', hover_data= ["temperature","region"],
                     color="temperature",  scope="usa").update_layout(
             xaxis_showgrid=False,
             yaxis_showgrid=True,
@@ -503,12 +493,58 @@ def update_cholorpeth_realtime(n):
             landcolor='rgba(51,17,0,0.2)')
             )
 
+    print(df)
+    
 
-    return fig_consumption, fig_temp 
+    max_consumption = df['consumption'].max() 
+    max_consumption_region = df.loc[df['consumption']==max_consumption, 'region'].values[0]
+    max_consumption = '{} {}'.format(max_consumption_region, str(max_consumption))
+
+    min_consumption = df['consumption'].min() 
+    min_consumption_region = df.loc[df['consumption']==min_consumption, 'region'].values[0]
+    min_consumption = '{} {}'.format(min_consumption_region, str(min_consumption))
+
+    consumption_change_percentage = "placeholder2"
 
 
 
+    max_temp = df['temperature'].max() 
+    max_temp_state = df.loc[df['temperature']==max_temp, 'states'].values[0]
+    max_temp = '{} {}'.format(max_temp_state, str(max_temp))
+    min_temp = df['temperature'].min() 
+    min_temp_state = df.loc[df['temperature']==min_temp, 'states'].values[0]
+    min_temp = '{} {}'.format(min_temp_state, str(min_temp))
 
+    temp_change_percentage = "placeholder1"
+
+
+
+    # Returns Top cell bar for header area
+    def get_top_bar_cell(cellTitle, cellValue):
+        return html.Div(
+            className="two-col",
+            children=[
+                html.P(className="p-top-bar", children=cellTitle),
+                html.P(id=cellTitle, className="display-none", children=cellValue),
+                html.P(children=cellValue),
+            ],
+        )
+
+    def get_top_bar(
+        max_consumption, min_consumption, max_temp, min_temp, temp_change_percentage, consumption_change_percentage
+    ):
+        return [
+            get_top_bar_cell("Maximum Temperature", max_temp),
+            get_top_bar_cell("Minimum Temperature", min_temp),
+            get_top_bar_cell("% Change Temp", temp_change_percentage),
+            get_top_bar_cell("Maximum Consumption", max_consumption),
+            get_top_bar_cell("Minimum Consumption", min_consumption),
+            get_top_bar_cell("% Change in Temp", consumption_change_percentage)
+        ]
+
+    last_updated = "Hourly Updated Live data. Last updated {}".format(datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
+
+    return fig_consumption, fig_temp, get_top_bar(max_consumption, min_consumption, max_temp, min_temp, temp_change_percentage, consumption_change_percentage), last_updated
 
 # Callback to update news
 @app.callback(Output("news", "children"), [Input("i_news", "n_intervals")])
@@ -520,9 +556,6 @@ def update_news_div(n):
 @app.callback(Output("live_clock", "children"), [Input("interval", "n_intervals")])
 def update_time(n):
     return datetime.datetime.now().strftime("%H:%M:%S")
-
-
-
 
 
 # Run the app
