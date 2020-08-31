@@ -11,6 +11,7 @@ from dash.dependencies import Input, Output, State
 #read states data for map
 import json
 
+import plotly.graph_objects as go
 #modules for ARIMA
 from pmdarima.arima import ARIMA
 
@@ -157,6 +158,145 @@ years_dropdown =  dcc.Dropdown(
 # )
 
 
+def model_plot():
+    pd.plotting.register_matplotlib_converters()
+
+    df = pd.read_csv('data/new_york.csv')
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    #converting data to daily usage.
+    df.index = df.Date
+    df = df.drop('Date', axis=1)
+    # resample the dataframe every 1 day (D) and sum ovr each day
+    df = df.resample('D').sum()
+    df = df.tz_localize(None)
+
+
+    nyc_weather = pd.read_csv('data/weatherNY.csv')
+    nyc_weather['DATE'] = pd.to_datetime(nyc_weather['DATE'])
+    nyc_weather = nyc_weather.set_index('DATE')
+    nyc_weather.drop(['NAME','STATION'],axis=1,inplace=True)
+    nyc_weather = nyc_weather['2015-07-01':'2020-08-10']
+
+    df = df[:'2020-08-10']
+
+
+    #trying 1 day increments with EXOG. MAYBE BEST CANDIDATE? with fourier terms june to june as 638 and august to august 516
+
+    day = 7
+    real_values = []
+    predictions = []
+
+    df1 = df["2016":"2019"]
+    nyc_weather = nyc_weather["2016":"2019"]
+
+    y = df1.Consumption
+
+    exog = pd.DataFrame({'date': y.index})
+    exog = exog.set_index(pd.PeriodIndex(exog['date'], freq='D'))
+    exog['is_weekend'] = np.where(exog.index.dayofweek < 5,0,1)
+
+    #add weather data
+    exog['TMIN'] = nyc_weather['TMIN'].values
+    exog['sin1'] = np.sin(2 * np.pi * exog.index.dayofyear / 638)
+    exog['cos1'] = np.cos(2 * np.pi * exog.index.dayofyear / 638)
+    exog['sin2'] = np.sin(4 * np.pi * exog.index.dayofyear /638)
+    exog['cos2'] = np.cos(4 * np.pi * exog.index.dayofyear /638)
+    exog['sin3'] = np.sin(2 * np.pi * exog.index.dayofyear / 516)
+    exog['cos3'] = np.cos(2 * np.pi * exog.index.dayofyear / 516)
+    exog['sin4'] = np.sin(4 * np.pi * exog.index.dayofyear /516)
+    exog['cos4'] = np.cos(4 * np.pi * exog.index.dayofyear /516)
+
+
+
+    exog = exog.drop(columns=['date'])
+
+    num_to_update = 0
+    y_to_train = y.iloc[:(len(y)-100)]    
+    exog_to_train = exog.iloc[:(len(y)-100)]
+
+    dates = []
+
+    steps = []
+
+    for i in range(5):
+
+        #first iteration train the model
+        if i == 0:
+            arima_exog_model = ARIMA(order=(3, 0, 1), seasonal_order=(2, 0, 0, 7),exogenous=exog_to_train, error_action='ignore',
+                                    initialization='approximate_diffuse', suppress_warnings=True).fit(y=y_to_train)  
+
+            preds = arima_exog_model.predict_in_sample(exog_to_train)            
+            #first prediction
+            y_to_test = y.iloc[(len(y)-100):(len(y)-100+day)]
+            y_exog_to_test = exog.iloc[(len(y)-100):(len(y)-100+day)]
+            y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=y_exog_to_test)
+            
+            real_values.append(y_to_test.values)
+            predictions.append(y_arima_exog_forecast.tolist())
+            
+            dates.append(y_to_test.index)
+            steps.append(y_to_test.index[-1])
+                                                    
+            #y_arima_exog_forecast = arima_exog_model.predict(n_periods=2, exogenous=exog_to_test)
+        else:
+            y_to_update = y.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
+            exog_to_update = exog.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
+
+            #to test
+            to_test = y.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
+            exog_to_test = exog.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
+            #update the model
+
+            arima_exog_model.update(y_to_update,exogenous=exog_to_update)
+            y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=exog_to_test)
+
+            dates.append(to_test.index)
+            steps.append(to_test.index[-1])
+
+            predictions.append(y_arima_exog_forecast.tolist())    
+            real_values.append(to_test.values)
+            
+            num_to_update += day
+
+
+    predict =  [item for sublist in predictions for item in sublist]
+    true = [item for sublist in real_values for item in sublist]
+    dates = [item for sublist in dates for item in sublist]
+
+    #for viz purposes
+    y_to_train2 = y_to_train[-200:]
+    preds = preds[-200:]
+    y_to_train2 = y_to_train2.to_frame()
+    fig = go.Figure()
+    # Create and style traces
+    fig.add_trace(go.Scatter(x=y_to_train2.index, y=y_to_train2.Consumption, name='True values',
+                            line=dict(color='firebrick', width=4,dash='dot')))
+
+    fig.add_trace(go.Scatter(x=y_to_train2.index, y=preds[-200:], name='In-sample Prediction',
+                            line=dict(color='royalblue', width=4)))
+
+    fig.add_trace(go.Scatter(x=dates, y=predict, name='Prediction',
+                            line=dict(color='green', width=4)))
+
+    fig.add_trace(go.Scatter(x=dates, y=true, name='True',
+                            line=dict(color='firebrick', width=4,dash='dot')))
+
+    fig.update_layout(title='Electricity Consumption in New York',
+                    xaxis_title='Date',
+                    yaxis_title='Consumption',
+                    xaxis_showgrid=True,
+                    yaxis_showgrid=True,
+                    #autosize=False,
+                    #width=500,
+                    #height=500,
+                    paper_bgcolor=app_colors['background'], 
+                    plot_bgcolor=app_colors['background'])
+
+
+    return fig 
+
+
 app.layout = html.Div(children=[
                       html.Div(className='row',  # Define the row element
                                children=[
@@ -220,7 +360,7 @@ app.layout = html.Div(children=[
                                                 dcc.Graph(id='model-prediction',
                                                     config={'displayModeBar': False},
                                                     animate=None,   
-                                                    #figure =  fig       
+                                                    figure =  model_plot()      
                                                     )
                                               
                                   ]),
@@ -362,7 +502,7 @@ def update_graph(selected_dropdown_value):
             y='Consumption',
             title='Daily Consumption'
             ).update_layout(
-            xaxis_showgrid=False,
+            xaxis_showgrid=True,
             yaxis_showgrid=True,
             #autosize=False,
             #width=500,
@@ -428,133 +568,133 @@ def update_polar_chart(years):
 
 
 
-# #weather  and consumption update
-# @app.callback([Output("weather_graph", "figure"), 
-#               Output("consumption_graph", "figure"),
-#               Output("top_bar", "children"),
-#               Output("last_update", "children")],
-#              [Input("weather_update", "n_intervals")])
-# def update_cholorpeth_realtime(n):
-#     df = df_states_main 
-#     temperatures = {}
-#     weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
-#     for state in df['states']:
-#         latitude = df.loc[df['states'] == state, 'latitude'].iloc[0]
-#         longitude = df.loc[df['states'] == state, 'longitude'].iloc[0]
+#weather  and consumption update
+@app.callback([Output("weather_graph", "figure"), 
+              Output("consumption_graph", "figure"),
+              Output("top_bar", "children"),
+              Output("last_update", "children")],
+             [Input("weather_update", "n_intervals")])
+def update_cholorpeth_realtime(n):
+    df = df_states_main 
+    temperatures = {}
+    weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
+    for state in df['states']:
+        latitude = df.loc[df['states'] == state, 'latitude'].iloc[0]
+        longitude = df.loc[df['states'] == state, 'longitude'].iloc[0]
 
-#         url = f"http://api.openweathermap.org/data/2.5/weather?lat={latitude}&lon={longitude}&units=imperial&appid={weather_api_key}"
-#         r = requests.get(url)
-#         json_data = r.json()
-#         temperatures[state] = json_data["main"]["temp"]
+        url = f"http://api.openweathermap.org/data/2.5/weather?lat={latitude}&lon={longitude}&units=imperial&appid={weather_api_key}"
+        r = requests.get(url)
+        json_data = r.json()
+        temperatures[state] = json_data["main"]["temp"]
 
-#     df['temperature'] = df['states'].map(temperatures)
+    df['temperature'] = df['states'].map(temperatures)
 
-#     consumptions = {}
-#     eia_api_key = "565ac7c9b7e000e9f3f58590dd7b9ba1"
+    consumptions = {}
+    eia_api_key = "565ac7c9b7e000e9f3f58590dd7b9ba1"
 
-#     #get yesterdays date for the api call and give a time to get less data than desired
-#     date = (datetime.datetime.now() -datetime.timedelta(days=1)).strftime("%Y%m%d") + 'T24Z'
+    #get yesterdays date for the api call and give a time to get less data than desired
+    date = (datetime.datetime.now() -datetime.timedelta(days=1)).strftime("%Y%m%d") + 'T24Z'
 
-#     for region in df['region'].unique():
-#         url = 'http://api.eia.gov/series/?api_key=' + eia_api_key + \
-#             '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={date}'
+    for region in df['region'].unique():
+        url = 'http://api.eia.gov/series/?api_key=' + eia_api_key + \
+            '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={date}'
 
-#         r = requests.get(url)
-#         json_data = r.json()
-#         consumptions[region] = json_data.get('series')[0].get('data')[-1][1]
-
-    
-#     df['consumption'] = df['region'].map(consumptions)
-
-#     fig_temp = px.choropleth(df,
-#                     locations="states", locationmode="USA-states",
-#                     color_continuous_scale="Viridis",
-#                     #color_continuous_scale="Reds",
-#                     title='Live Temperatures for each state  Current time, Unix, UTC', hover_data= ["temperature","region"],
-#                     color="temperature",  scope="usa").update_layout(
-#             xaxis_showgrid=False,
-#             yaxis_showgrid=True,
-#             #autosize=False,
-#             #width=500,
-#             #height=500,
-#             paper_bgcolor="#1a1c23", 
-#             plot_bgcolor="#1a1c23").update_layout(
-#                 geo=dict(bgcolor= "#1a1c23", 
-#                 lakecolor="#1a1c23",
-#                 landcolor='rgba(51,17,0,0.2)')
-#                 )
+        r = requests.get(url)
+        json_data = r.json()
+        consumptions[region] = json_data.get('series')[0].get('data')[-1][1]
 
     
-#     fig_consumption = px.choropleth(df,
-#                 locations="states", locationmode="USA-states",
-#                # color_continuous_scale="Reds",
-#                 #color_continuous_scale="Reds",
-#                 title='Live Electricity Consumption for each region', hover_data= ["consumption","region"],
-#                 color="consumption",  scope="usa").update_layout(
-#         xaxis_showgrid=False,
-#         yaxis_showgrid=True,
-#         #autosize=False,
-#         #width=500,
-#         #height=500,
-#         paper_bgcolor="#1a1c23", 
-#         plot_bgcolor="#1a1c23").update_layout(
-#             geo=dict(bgcolor= "#1a1c23", 
-#             lakecolor="#1a1c23",
-#             landcolor='rgba(51,17,0,0.2)')
-#             )
+    df['consumption'] = df['region'].map(consumptions)
 
-#     print(df)
+    fig_temp = px.choropleth(df,
+                    locations="states", locationmode="USA-states",
+                    color_continuous_scale="Viridis",
+                    #color_continuous_scale="Reds",
+                    title='Live Temperatures for each state  Current time, Unix, UTC', hover_data= ["temperature","region"],
+                    color="temperature",  scope="usa").update_layout(
+            xaxis_showgrid=False,
+            yaxis_showgrid=True,
+            #autosize=False,
+            #width=500,
+            #height=500,
+            paper_bgcolor="#1a1c23", 
+            plot_bgcolor="#1a1c23").update_layout(
+                geo=dict(bgcolor= "#1a1c23", 
+                lakecolor="#1a1c23",
+                landcolor='rgba(51,17,0,0.2)')
+                )
+
+    
+    fig_consumption = px.choropleth(df,
+                locations="states", locationmode="USA-states",
+               # color_continuous_scale="Reds",
+                #color_continuous_scale="Reds",
+                title='Live Electricity Consumption for each region', hover_data= ["consumption","region"],
+                color="consumption",  scope="usa").update_layout(
+        xaxis_showgrid=False,
+        yaxis_showgrid=True,
+        #autosize=False,
+        #width=500,
+        #height=500,
+        paper_bgcolor="#1a1c23", 
+        plot_bgcolor="#1a1c23").update_layout(
+            geo=dict(bgcolor= "#1a1c23", 
+            lakecolor="#1a1c23",
+            landcolor='rgba(51,17,0,0.2)')
+            )
+
+    print(df)
     
 
-#     max_consumption = df['consumption'].max() 
-#     max_consumption_region = df.loc[df['consumption']==max_consumption, 'region'].values[0]
-#     max_consumption = '{} {}'.format(max_consumption_region, str(max_consumption))
+    max_consumption = df['consumption'].max() 
+    max_consumption_region = df.loc[df['consumption']==max_consumption, 'region'].values[0]
+    max_consumption = '{} {}'.format(max_consumption_region, str(max_consumption))
 
-#     min_consumption = df['consumption'].min() 
-#     min_consumption_region = df.loc[df['consumption']==min_consumption, 'region'].values[0]
-#     min_consumption = '{} {}'.format(min_consumption_region, str(min_consumption))
+    min_consumption = df['consumption'].min() 
+    min_consumption_region = df.loc[df['consumption']==min_consumption, 'region'].values[0]
+    min_consumption = '{} {}'.format(min_consumption_region, str(min_consumption))
 
-#     consumption_change_percentage = "placeholder2"
-
-
-
-#     max_temp = df['temperature'].max() 
-#     max_temp_state = df.loc[df['temperature']==max_temp, 'states'].values[0]
-#     max_temp = '{} {}'.format(max_temp_state, str(max_temp))
-#     min_temp = df['temperature'].min() 
-#     min_temp_state = df.loc[df['temperature']==min_temp, 'states'].values[0]
-#     min_temp = '{} {}'.format(min_temp_state, str(min_temp))
-
-#     temp_change_percentage = "placeholder1"
+    consumption_change_percentage = "placeholder2"
 
 
 
-#     # Returns Top cell bar for header area
-#     def get_top_bar_cell(cellTitle, cellValue):
-#         return html.Div(
-#             className="two-col",
-#             children=[
-#                 html.P(className="p-top-bar", children=cellTitle),
-#                 html.P(id=cellTitle, className="display-none", children=cellValue),
-#                 html.P(children=cellValue),
-#             ],
-#         )
+    max_temp = df['temperature'].max() 
+    max_temp_state = df.loc[df['temperature']==max_temp, 'states'].values[0]
+    max_temp = '{} {}'.format(max_temp_state, str(max_temp))
+    min_temp = df['temperature'].min() 
+    min_temp_state = df.loc[df['temperature']==min_temp, 'states'].values[0]
+    min_temp = '{} {}'.format(min_temp_state, str(min_temp))
 
-#     def get_top_bar(
-#         max_consumption, min_consumption, max_temp, min_temp, temp_change_percentage, consumption_change_percentage
-#     ):
-#         return [
-#             get_top_bar_cell("Maximum Temperature", max_temp),
-#             get_top_bar_cell("Minimum Temperature", min_temp),
-#             get_top_bar_cell("% Change Temp", temp_change_percentage),
-#             get_top_bar_cell("Maximum Consumption", max_consumption),
-#             get_top_bar_cell("Minimum Consumption", min_consumption),
-#             get_top_bar_cell("% Change in Temp", consumption_change_percentage)
-#         ]
+    temp_change_percentage = "placeholder1"
 
-#     last_updated = "Hourly Updated Live data. Last updated {}".format(datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
 
-#     return fig_consumption, fig_temp, get_top_bar(max_consumption, min_consumption, max_temp, min_temp, temp_change_percentage, consumption_change_percentage), last_updated
+
+    # Returns Top cell bar for header area
+    def get_top_bar_cell(cellTitle, cellValue):
+        return html.Div(
+            className="two-col",
+            children=[
+                html.P(className="p-top-bar", children=cellTitle),
+                html.P(id=cellTitle, className="display-none", children=cellValue),
+                html.P(children=cellValue),
+            ],
+        )
+
+    def get_top_bar(
+        max_consumption, min_consumption, max_temp, min_temp, temp_change_percentage, consumption_change_percentage
+    ):
+        return [
+            get_top_bar_cell("Maximum Temperature", max_temp),
+            get_top_bar_cell("Minimum Temperature", min_temp),
+            get_top_bar_cell("% Change Temp", temp_change_percentage),
+            get_top_bar_cell("Maximum Consumption", max_consumption),
+            get_top_bar_cell("Minimum Consumption", min_consumption),
+            get_top_bar_cell("% Change in Temp", consumption_change_percentage)
+        ]
+
+    last_updated = "Hourly Updated Live data. Last updated {}".format(datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S"))
+
+    return fig_consumption, fig_temp, get_top_bar(max_consumption, min_consumption, max_temp, min_temp, temp_change_percentage, consumption_change_percentage), last_updated
 
 # Callback to update news
 @app.callback(Output("news", "children"), [Input("i_news", "n_intervals")])
@@ -566,6 +706,9 @@ def update_news_div(n):
 @app.callback(Output("live_clock", "children"), [Input("interval", "n_intervals")])
 def update_time(n):
     return "Current time: " + datetime.datetime.now().strftime("%H:%M:%S")
+
+
+
 
 
 # Run the app
