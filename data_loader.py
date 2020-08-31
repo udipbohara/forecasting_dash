@@ -31,7 +31,7 @@ def get_data():
         crude['Date'] = pd.to_datetime(crude[['Year','Month','Day','Hour']])
         crude.drop(['Year','Month','Day','Hour'], axis=1, inplace=True)
         df = crude 
-        df = df[df['Consumption'] != 0]
+        #df = df[df['Consumption'] != 0]
 
 
         df.to_csv(f'data/{region}.csv', index=False)

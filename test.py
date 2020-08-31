@@ -1,13 +1,6 @@
 
 
 
-# import requests
-# import pandas as pd 
-# import json
-# import datetime
-# import plotly.express as px 
-
-
 import requests
 import pandas as pd 
 import json
@@ -15,154 +8,190 @@ import datetime
 import plotly.express as px 
 
 
-# with open('states.json') as f:
-#     states_data = json.load(f)
+import requests
+import pandas as pd 
+import json
+import datetime
+import plotly.express as px 
+import numpy as np 
 
-# df_state = pd.DataFrame(states_data)
-# df_state = df_state.explode('states')
-# #adding states coordinates
-# df2 = pd.read_csv('states_coordinates.csv')
-# df2.drop('city', axis=1, inplace=True)
-# df = df_state.merge(df2, on='states')
-
-# temperatures = {}
-# weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
-
-# for state in df['states']:
-#     latitude = df.loc[df['states'] == state, 'latitude'].iloc[0]
-#     longitude = df.loc[df['states'] == state, 'longitude'].iloc[0]
-
-#     url = f"http://api.openweathermap.org/data/2.5/weather?lat={latitude}&lon={longitude}&units=imperial&appid={weather_api_key}"
-#     r = requests.get(url)
-#     json_data = r.json()
-#     temperatures[state] = json_data["main"]["temp"]
-
-# df['temperature'] = df['states'].map(temperatures)
-
-# consumptions = {}
-# eia_api_key = "565ac7c9b7e000e9f3f58590dd7b9ba1"
-
-# #get yesterdays date for the api call and give a time to get less data than desired
-# date = (datetime.datetime.now() -datetime.timedelta(days=1)).strftime("%Y%m%d") + 'T24Z'
-
-# for region in df['region'].unique():
-#     url = 'http://api.eia.gov/series/?api_key=' + eia_api_key + \
-#         '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={date}'
-
-#     r = requests.get(url)
-#     json_data = r.json()
-#     consumptions[region] = json_data.get('series')[0].get('data')[-1][1]
+import matplotlib.pyplot as plt
+from pmdarima.arima import ARIMA
+from datetime import timedelta
 
 
-# df['consumption'] = df['region'].map(consumptions)
+pd.plotting.register_matplotlib_converters()
+
+df = pd.read_csv('data/new_york.csv')
+df['Date'] = pd.to_datetime(df['Date'])
+
+#converting data to daily usage.
+df.index = df.Date
+df = df.drop('Date', axis=1)
+# resample the dataframe every 1 day (D) and sum ovr each day
+df = df.resample('D').sum()
+df = df.tz_localize(None)
 
 
+nyc_weather = pd.read_csv('data/weatherNY.csv')
+nyc_weather['DATE'] = pd.to_datetime(nyc_weather['DATE'])
+nyc_weather = nyc_weather.set_index('DATE')
+nyc_weather.drop(['NAME','STATION'],axis=1,inplace=True)
+nyc_weather = nyc_weather['2015-07-01':'2020-08-10']
 
-# max_consumption = df['consumption'].max() 
-# max_consumption_state = df.loc[df['consumption']==max_consumption, 'states'].values[0]
-# min_consumption = df['consumption'].min() 
-# min_consumption_state = df.loc[df['consumption']==max_consumption, 'states'].values[0]
+df = df[:'2020-08-10']
 
 
-# max_temp = df['temperature'].max() 
-# max_temp_state = df.loc[df['temperature']==max_temp, 'states'].values[0]
-# min_temp = df['temperature'].max() 
-# min_temp_state = df.loc[df['temperature']==min_temp, 'states'].values[0]
+#trying 1 day increments with EXOG. MAYBE BEST CANDIDATE? with fourier terms june to june as 638 and august to august 516
 
-# print(max_temp,max_temp_state,min_consumption,min_consumption_state)
+day = 7
+real_values = []
+predictions = []
+
+df1 = df["2016":"2019"]
+nyc_weather = nyc_weather["2016":"2019"]
+
+y = df1.Consumption
+
+exog = pd.DataFrame({'date': y.index})
+exog = exog.set_index(pd.PeriodIndex(exog['date'], freq='D'))
+exog['is_weekend'] = np.where(exog.index.dayofweek < 5,0,1)
 
 
 
-"""
+#add weather data
+
+exog['TMIN'] = nyc_weather['TMIN'].values
 
 
-# Callback to update Top Bar values
-@app.callback(Output("top_bar", "children"), [Input("weather_update", "n_intervals")])
-
-    def update_top_bar(orders):
-
-"""
+exog['sin1'] = np.sin(2 * np.pi * exog.index.dayofyear / 638)
+exog['cos1'] = np.cos(2 * np.pi * exog.index.dayofyear / 638)
 
 
-
-#put this in the main div
-        # where the graphs are:
-        #   html.Div(
-        #             id="top_bar", className="row div-top-bar", children=get_top_bar()
-        #         ),
+exog['sin2'] = np.sin(4 * np.pi * exog.index.dayofyear /638)
+exog['cos2'] = np.cos(4 * np.pi * exog.index.dayofyear /638)
 
 
-                                #         #this is for the choropeth
-                                #     html.Div(className='eight columns div-user-controls',
-                                #         children = [
-                                #             html.P('Enter a range for cumulative consumption data or a single end date for single day'),
-                                #             dcc.DatePickerRange(
-                                #                     id='my-date-picker-single',
-                                #                     min_date_allowed=frames['NY'].index.date.min(),
-                                #                     max_date_allowed=frames['NY'].index.date.max(),
-                                #                     start_date = None,
-                                #                     initial_visible_month=frames['NY'].index.date.max(),
-                                #                     end_date=frames['NY'].index.date.max(),
-                                #                     start_date_placeholder_text='Start Date'
-                                #                 ),
-                                #              html.Button(
-                                #                     'Clear start date',
-                                #                     id='button'
-                                #                 ),
-                                #             dcc.Graph(id='geographic_map',
-                                #                 config={'displayModeBar': False},
-                                #                 animate=None        
-                                #                 )
-                                #         ]
-                    
-                                #   ), 
-
-"""
-                            html.Div(className='two-bigger-charts',
-                                children=[
-                                  html.Div(className="two-maps",
-                                            children = [
-                                           html.Div(className='eight columns div-user-controls',
-                                        children = [
-                                            html.P('Enter a range for cumulative consumption data or a single end date for single day'),
-                                            dcc.DatePickerRange(
-                                                    id='my-date-picker-single',
-                                                    min_date_allowed=frames['NY'].index.date.min(),
-                                                    max_date_allowed=frames['NY'].index.date.max(),
-                                                    start_date = None,
-                                                    initial_visible_month=frames['NY'].index.date.max(),
-                                                    end_date=frames['NY'].index.date.max(),
-                                                    start_date_placeholder_text='Start Date'
-                                                ),
-                                             html.Button(
-                                                    'Clear start date',
-                                                    id='button'
-                                                ),
-                                            dcc.Graph(id='geographic_map',
-                                                config={'displayModeBar': False},
-                                                animate=None        
-                                                )
-                                        ]
-                    
-                                  ), 
-
-                                    html.Div(className='polarchartclass',
-                                        children = [
-                                            html.P('Consumption per season'),
-                                            html.P('Pick a year or multiple years to see consumption varied by seasons'),
-                                            years_dropdown,
-                                            dcc.Graph(id='polar_chart',
-                                                config={'displayModeBar': False},
-                                                animate=None       
-                                                ),
-
-                    
-                                            #html.Div(id="news", children=update_news()),
-                                        ]
-                                        ),
-
-                                        
-                       #         ]),
+exog['sin3'] = np.sin(2 * np.pi * exog.index.dayofyear / 516)
+exog['cos3'] = np.cos(2 * np.pi * exog.index.dayofyear / 516)
 
 
-"""
+exog['sin4'] = np.sin(4 * np.pi * exog.index.dayofyear /516)
+exog['cos4'] = np.cos(4 * np.pi * exog.index.dayofyear /516)
+
+
+
+exog = exog.drop(columns=['date'])
+
+num_to_update = 0
+
+
+y_to_train = y.iloc[:(len(y)-100)]    
+exog_to_train = exog.iloc[:(len(y)-100)]
+
+dates = []
+
+steps = []
+
+for i in range(5):
+
+    #first iteration train the model
+    if i == 0:
+        arima_exog_model = ARIMA(order=(3, 0, 1), seasonal_order=(2, 0, 0, 7),exogenous=exog_to_train, error_action='ignore',
+                                initialization='approximate_diffuse', suppress_warnings=True).fit(y=y_to_train)  
+
+
+        preds = arima_exog_model.predict_in_sample(exog_to_train)
+        
+        #first prediction
+        y_to_test = y.iloc[(len(y)-100):(len(y)-100+day)]
+        y_exog_to_test = exog.iloc[(len(y)-100):(len(y)-100+day)]
+        y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=y_exog_to_test)
+        
+        real_values.append(y_to_test.values)
+        predictions.append(y_arima_exog_forecast.tolist())
+        
+        dates.append(y_to_test.index)
+        steps.append(y_to_test.index[-1])
+                                                 
+        #y_arima_exog_forecast = arima_exog_model.predict(n_periods=2, exogenous=exog_to_test)
+    else:
+        y_to_update = y.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
+        exog_to_update = exog.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
+
+        #to test
+        to_test = y.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
+        exog_to_test = exog.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
+        #update the model
+
+        arima_exog_model.update(y_to_update,exogenous=exog_to_update)
+        y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=exog_to_test)
+
+        dates.append(to_test.index)
+        steps.append(to_test.index[-1])
+
+        predictions.append(y_arima_exog_forecast.tolist())    
+        real_values.append(to_test.values)
+        
+        
+        num_to_update += day
+
+
+predict =  [item for sublist in predictions for item in sublist]
+true = [item for sublist in real_values for item in sublist]
+dates = [item for sublist in dates for item in sublist]
+
+# predict_increments = [x for x in [i for i in range(len(true))] if x%day == 0]
+# predict_increments = [date for date in [i + timedelta(days=i) for i in dates]]
+plt.figure(figsize=[50,10])
+
+# plt.plot(dates,true, label='True')
+# plt.plot(dates,predict, 'b',label='Predicted')
+
+
+
+    #in sample preds
+
+# plt.figure(figsize=[25,7])
+
+
+
+#for viz purposes
+y_to_train2 = y_to_train[-200:]
+plt.plot(y_to_train2,'g',  linewidth=1)
+plt.plot(y_to_train2.index,preds[-200:],'r',alpha=.8, linewidth=1, label='Fit')
+
+plt.plot(dates, true, label='True')
+plt.plot(dates, predict, 'b',label='Predicted')
+
+for step in steps:
+    plt.axvline(step, color='green', linestyle='--', alpha=0.4)
+
+
+
+
+#plt.show()
+
+
+train_df = y_to_train.to_frame()
+train_df['in_sample_preds'] = preds
+train_df['date'] = train_df.index
+train_df = train_df[-50:]
+
+test_df = pd.DataFrame()
+test_df['true'],test_df['pred'] = true,predict
+test_df['date'] = test_df.index
+test_df.index = dates
+
+fig =px.line(train_df,
+            x='date',
+            y=['in_sample_preds','Consumption'])
+
+
+
+fig2 = px.line(test_df,
+            x='date',
+            y=['pred','true'])
+
+
+fig2.show() 
