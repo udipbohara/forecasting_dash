@@ -16,8 +16,6 @@ import plotly.graph_objects as go
 from pmdarima.arima import ARIMA
 
 
-
-
 # import plotly.graph_objects as go
 # from plotly.subplots import make_subplots
 
@@ -136,6 +134,25 @@ dropdown_model = dcc.Dropdown(id='model-select-dropdown',
                 #style={'align-content':'center'}
             )
 
+
+model_dropdown_time = dcc.Dropdown(id='model-dropdown-time',
+                    options=[
+                    {'label': 'Year', 'value': 365},
+                    {'label': 'Month', 'value': 30},
+                    {'label': 'Week', 'value': 7},
+                    {'label': 'Day', 'value': 1}
+                ],
+                #value='sarimax',
+                placeholder="Select number of days",
+                clearable=False,
+                value=1,
+                style={'height': '30px', 'width': '200px'}
+               # labelStyle={'display': 'inline-block'},
+                #style={'align-content':'center'}
+            )
+
+
+
 years_dropdown =  dcc.Dropdown(
                         id='dropdown_polar_chart',
                         options=[{'label':str(k),'value':str(k)} for k in [k for k in range(2015,frames['NY'].index.year.max()+1)  ]   ],
@@ -158,145 +175,6 @@ years_dropdown =  dcc.Dropdown(
 # )
 
 
-def model_plot():
-    pd.plotting.register_matplotlib_converters()
-
-    df = pd.read_csv('data/new_york.csv')
-    df['Date'] = pd.to_datetime(df['Date'])
-
-    #converting data to daily usage.
-    df.index = df.Date
-    df = df.drop('Date', axis=1)
-    # resample the dataframe every 1 day (D) and sum ovr each day
-    df = df.resample('D').sum()
-    df = df.tz_localize(None)
-
-
-    nyc_weather = pd.read_csv('data/weatherNY.csv')
-    nyc_weather['DATE'] = pd.to_datetime(nyc_weather['DATE'])
-    nyc_weather = nyc_weather.set_index('DATE')
-    nyc_weather.drop(['NAME','STATION'],axis=1,inplace=True)
-    nyc_weather = nyc_weather['2015-07-01':'2020-08-10']
-
-    df = df[:'2020-08-10']
-
-
-    #trying 1 day increments with EXOG. MAYBE BEST CANDIDATE? with fourier terms june to june as 638 and august to august 516
-
-    day = 7
-    real_values = []
-    predictions = []
-
-    df1 = df["2016":"2019"]
-    nyc_weather = nyc_weather["2016":"2019"]
-
-    y = df1.Consumption
-
-    exog = pd.DataFrame({'date': y.index})
-    exog = exog.set_index(pd.PeriodIndex(exog['date'], freq='D'))
-    exog['is_weekend'] = np.where(exog.index.dayofweek < 5,0,1)
-
-    #add weather data
-    exog['TMIN'] = nyc_weather['TMIN'].values
-    exog['sin1'] = np.sin(2 * np.pi * exog.index.dayofyear / 638)
-    exog['cos1'] = np.cos(2 * np.pi * exog.index.dayofyear / 638)
-    exog['sin2'] = np.sin(4 * np.pi * exog.index.dayofyear /638)
-    exog['cos2'] = np.cos(4 * np.pi * exog.index.dayofyear /638)
-    exog['sin3'] = np.sin(2 * np.pi * exog.index.dayofyear / 516)
-    exog['cos3'] = np.cos(2 * np.pi * exog.index.dayofyear / 516)
-    exog['sin4'] = np.sin(4 * np.pi * exog.index.dayofyear /516)
-    exog['cos4'] = np.cos(4 * np.pi * exog.index.dayofyear /516)
-
-
-
-    exog = exog.drop(columns=['date'])
-
-    num_to_update = 0
-    y_to_train = y.iloc[:(len(y)-100)]    
-    exog_to_train = exog.iloc[:(len(y)-100)]
-
-    dates = []
-
-    steps = []
-
-    for i in range(5):
-
-        #first iteration train the model
-        if i == 0:
-            arima_exog_model = ARIMA(order=(3, 0, 1), seasonal_order=(2, 0, 0, 7),exogenous=exog_to_train, error_action='ignore',
-                                    initialization='approximate_diffuse', suppress_warnings=True).fit(y=y_to_train)  
-
-            preds = arima_exog_model.predict_in_sample(exog_to_train)            
-            #first prediction
-            y_to_test = y.iloc[(len(y)-100):(len(y)-100+day)]
-            y_exog_to_test = exog.iloc[(len(y)-100):(len(y)-100+day)]
-            y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=y_exog_to_test)
-            
-            real_values.append(y_to_test.values)
-            predictions.append(y_arima_exog_forecast.tolist())
-            
-            dates.append(y_to_test.index)
-            steps.append(y_to_test.index[-1])
-                                                    
-            #y_arima_exog_forecast = arima_exog_model.predict(n_periods=2, exogenous=exog_to_test)
-        else:
-            y_to_update = y.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
-            exog_to_update = exog.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
-
-            #to test
-            to_test = y.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
-            exog_to_test = exog.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
-            #update the model
-
-            arima_exog_model.update(y_to_update,exogenous=exog_to_update)
-            y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=exog_to_test)
-
-            dates.append(to_test.index)
-            steps.append(to_test.index[-1])
-
-            predictions.append(y_arima_exog_forecast.tolist())    
-            real_values.append(to_test.values)
-            
-            num_to_update += day
-
-
-    predict =  [item for sublist in predictions for item in sublist]
-    true = [item for sublist in real_values for item in sublist]
-    dates = [item for sublist in dates for item in sublist]
-
-    #for viz purposes
-    y_to_train2 = y_to_train[-200:]
-    preds = preds[-200:]
-    y_to_train2 = y_to_train2.to_frame()
-    fig = go.Figure()
-    # Create and style traces
-    fig.add_trace(go.Scatter(x=y_to_train2.index, y=y_to_train2.Consumption, name='True values',
-                            line=dict(color='firebrick', width=4,dash='dot')))
-
-    fig.add_trace(go.Scatter(x=y_to_train2.index, y=preds[-200:], name='In-sample Prediction',
-                            line=dict(color='royalblue', width=4)))
-
-    fig.add_trace(go.Scatter(x=dates, y=predict, name='Prediction',
-                            line=dict(color='green', width=4)))
-
-    fig.add_trace(go.Scatter(x=dates, y=true, name='True',
-                            line=dict(color='firebrick', width=4,dash='dot')))
-
-    fig.update_layout(title='Electricity Consumption in New York',
-                    xaxis_title='Date',
-                    yaxis_title='Consumption',
-                    xaxis_showgrid=True,
-                    yaxis_showgrid=True,
-                    #autosize=False,
-                    #width=500,
-                    #height=500,
-                    paper_bgcolor=app_colors['background'], 
-                    plot_bgcolor=app_colors['background'])
-
-
-    return fig 
-
-
 app.layout = html.Div(children=[
                       html.Div(className='row',  # Define the row element
                                children=[
@@ -311,7 +189,7 @@ app.layout = html.Div(children=[
                                         children = [
                                             html.H2('Forecasting - New York Electricity Consumption'),
                                             html.P('''Visualising time series with Plotly - Dash. This application is used for visualization of time series data (temperature and consumption of electricity in regions of the US. It also uses econometric as well as machine learning models 
-                                                    for forecasting the series.'''),
+                                                    for forecasting the series. This app continuously makes API calls for data, so there might be a slight delay in displaying some graphs/figures.'''),
                                             html.P('Electricity Distribution Region', style={'text-align':'center'}),
                                             html.Div(id="news", children=update_news()),
                                             html.H2(
@@ -357,10 +235,11 @@ app.layout = html.Div(children=[
                                             #                  #style={'text-align':'center'}
                                             #             ),
                                                 dropdown_model,
+                                                model_dropdown_time,
                                                 dcc.Graph(id='model-prediction',
                                                     config={'displayModeBar': False},
-                                                    animate=None,   
-                                                    figure =  model_plot()      
+                                                    animate=None   
+                                                    #figure =  model_plot()      
                                                     )
                                               
                                   ]),
@@ -423,11 +302,7 @@ app.layout = html.Div(children=[
                                                     animate=None)], className="six columns"),
                                         ]),
                                         ]),
-                                
-
-
-
-                                
+                                                                
 ]
                       )
 
@@ -567,6 +442,150 @@ def update_polar_chart(years):
     return fig
 
 
+#model update to the days
+
+#SARIMAX(3, 0, 1)x(2, 0, [], 7)  
+#SARIMAX(3, 0, 1)x(2, 0, [], 7) for daily
+@app.callback(Output("model-prediction", "figure"), 
+             [Input("model-dropdown-time", "value")])
+def model_plot(days):
+    days = int(days)
+    pd.plotting.register_matplotlib_converters()
+
+    df = pd.read_csv('data/new_york.csv')
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    #converting data to daily usage.
+    df.index = df.Date
+    df = df.drop('Date', axis=1)
+    # resample the dataframe every 1 day (D) and sum ovr each day
+    df = df.resample('D').sum()
+    df = df.tz_localize(None)
+
+    nyc_weather = pd.read_csv('data/weather/weatherNY.csv')
+    nyc_weather['DATE'] = pd.to_datetime(nyc_weather['DATE'])
+    nyc_weather = nyc_weather.set_index('DATE')
+    nyc_weather.drop(['NAME','STATION'],axis=1,inplace=True)
+    nyc_weather = nyc_weather['2015-07-01':'2020-08-10']
+
+    df = df[:'2020-08-10']
+
+    #trying 1 day increments with EXOG. MAYBE BEST CANDIDATE? with fourier terms june to june as 638 and august to august 516
+    day = days
+    real_values = []
+    predictions = []
+
+    df1 = df["2016":"2019"]
+    nyc_weather = nyc_weather["2016":"2019"]
+
+    y = df1.Consumption
+
+    exog = pd.DataFrame({'date': y.index})
+    exog = exog.set_index(pd.PeriodIndex(exog['date'], freq='D'))
+    exog['is_weekend'] = np.where(exog.index.dayofweek < 5,0,1)
+
+    #add weather data
+    exog['TMIN'] = nyc_weather['TMIN'].values
+    exog['sin1'] = np.sin(2 * np.pi * exog.index.dayofyear / 638)
+    exog['cos1'] = np.cos(2 * np.pi * exog.index.dayofyear / 638)
+    exog['sin2'] = np.sin(4 * np.pi * exog.index.dayofyear /638)
+    exog['cos2'] = np.cos(4 * np.pi * exog.index.dayofyear /638)
+    exog['sin3'] = np.sin(2 * np.pi * exog.index.dayofyear / 516)
+    exog['cos3'] = np.cos(2 * np.pi * exog.index.dayofyear / 516)
+    exog['sin4'] = np.sin(4 * np.pi * exog.index.dayofyear /516)
+    exog['cos4'] = np.cos(4 * np.pi * exog.index.dayofyear /516)
+
+
+
+    exog = exog.drop(columns=['date'])
+
+    num_to_update = 0
+    y_to_train = y.iloc[:(len(y)-100)]    
+    exog_to_train = exog.iloc[:(len(y)-100)]
+
+    dates = []
+
+    steps = []
+
+    for i in range(5):
+
+        #first iteration train the model
+        if i == 0:
+            arima_exog_model = ARIMA(order=(3, 0, 1), seasonal_order=(2, 0, 0, 7),exogenous=exog_to_train, error_action='ignore',
+                                    initialization='approximate_diffuse', suppress_warnings=True).fit(y=y_to_train)  
+
+            preds = arima_exog_model.predict_in_sample(exog_to_train)            
+            #first prediction
+            y_to_test = y.iloc[(len(y)-100):(len(y)-100+day)]
+            y_exog_to_test = exog.iloc[(len(y)-100):(len(y)-100+day)]
+            y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=y_exog_to_test)
+            
+            real_values.append(y_to_test.values)
+            predictions.append(y_arima_exog_forecast.tolist())
+            
+            dates.append(y_to_test.index)
+            steps.append(y_to_test.index[-1])
+                                                    
+            #y_arima_exog_forecast = arima_exog_model.predict(n_periods=2, exogenous=exog_to_test)
+        else:
+            y_to_update = y.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
+            exog_to_update = exog.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
+
+            #to test
+            to_test = y.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
+            exog_to_test = exog.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
+            #update the model
+
+            arima_exog_model.update(y_to_update,exogenous=exog_to_update)
+            y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=exog_to_test)
+
+            dates.append(to_test.index)
+            steps.append(to_test.index[-1])
+
+            predictions.append(y_arima_exog_forecast.tolist())    
+            real_values.append(to_test.values)
+            
+            num_to_update += day
+
+
+    predict =  [item for sublist in predictions for item in sublist]
+    true = [item for sublist in real_values for item in sublist]
+    dates = [item for sublist in dates for item in sublist]
+
+    #for viz purposes
+    y_to_train2 = y_to_train[-200:]
+    preds = preds[-200:]
+    y_to_train2 = y_to_train2.to_frame()
+    fig = go.Figure()
+    # Create and style traces
+    fig.add_trace(go.Scatter(x=y_to_train2.index, y=y_to_train2.Consumption, name='True values',
+                            line=dict(color='firebrick', width=4,dash='dot')))
+
+    fig.add_trace(go.Scatter(x=y_to_train2.index, y=preds[-200:], name='In-sample Prediction',
+                            line=dict(color='royalblue', width=4)))
+
+    fig.add_trace(go.Scatter(x=dates, y=predict, name='Prediction',
+                            line=dict(color='green', width=4)))
+
+    fig.add_trace(go.Scatter(x=dates, y=true, name='True',
+                            line=dict(color='firebrick', width=4,dash='dot')))
+
+    fig.update_layout(title='Electricity Consumption in New York',
+                    xaxis_title='Date',
+                    yaxis_title='Consumption',
+                    xaxis_showgrid=True,
+                    yaxis_showgrid=True,
+                    #autosize=False,
+                    #width=500,
+                    #height=500,
+                    paper_bgcolor=app_colors['background'], 
+                    plot_bgcolor=app_colors['background'])
+
+
+    return fig 
+
+
+
 
 #weather  and consumption update
 @app.callback([Output("weather_graph", "figure"), 
@@ -643,7 +662,7 @@ def update_cholorpeth_realtime(n):
             landcolor='rgba(51,17,0,0.2)')
             )
 
-    print(df)
+    #print(df)
     
 
     max_consumption = df['consumption'].max() 
@@ -706,9 +725,6 @@ def update_news_div(n):
 @app.callback(Output("live_clock", "children"), [Input("interval", "n_intervals")])
 def update_time(n):
     return "Current time: " + datetime.datetime.now().strftime("%H:%M:%S")
-
-
-
 
 
 # Run the app
