@@ -1,0 +1,89 @@
+"""
+Use this to create functions to retrieve databases in suitable dataframe formats 
+
+Use this to query the database and then return the 
+
+
+use queries to retrieve desirable data 
+"""
+
+
+"""
+
+
+import pathlib
+import sqlite3
+import pandas as pd
+
+
+DB_FILE = pathlib.Path(__file__).resolve().parent.joinpath("wind-data.db").resolve()
+
+
+def get_wind_data(start, end):
+    Query wind data rows between two ranges
+    :params start: start row id
+    :params end: end row id
+    :returns: pandas dataframe object
+    
+    con = sqlite3.connect(str(DB_FILE))
+    statement = f'SELECT Speed, SpeedError, Direction FROM Wind WHERE rowid > "{start}" AND rowid <= "{end}";'
+    df = pd.read_sql_query(statement, con)
+    return df
+
+
+def get_wind_data_by_id(id):
+    Query a row from the Wind Table
+    :params id: a row id
+    :returns: pandas dataframe object
+
+
+    con = sqlite3.connect(str(DB_FILE))
+    statement = f'SELECT * FROM Wind WHERE rowid = "{id}";'
+    df = pd.read_sql_query(statement, con)
+    return df
+
+"""
+
+
+
+import json
+import requests
+
+class my_data:
+    pass
+
+
+
+url = "https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&locationid=ZIP:28801&startdate=2010-05-01&enddate=2010-05-10"
+
+
+r = requests.get(url, headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
+d = json.loads(r.text)
+avg_temps = [item for item in d['results'] if item['datatype']=='TAVG']
+print(avg_temps)
+
+
+
+#initialize lists to store data
+dates_temp = []
+dates_prcp = []
+temps = []
+prcp = []
+
+#for each year from 2015-2019 ...
+for year in range(2015, 2020):
+    year = str(year)
+    print('working on year '+year)
+    
+    #make the api call
+    r = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&datatypeid=TAVG&limit=1000&stationid=GHCND:USW00023129&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={'token':Token})
+    #load the api response as a json
+    d = json.loads(r.text)
+    #get all items in the response which are average temperature readings
+    avg_temps = [item for item in d['results'] if item['datatype']=='TAVG']
+    #get the date field from all average temperature readings
+    dates_temp += [item['date'] for item in avg_temps]
+    #get the actual average temperature from all average temperature readings
+    temps += [item['value'] for item in avg_temps]
+
+
