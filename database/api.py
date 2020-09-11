@@ -45,23 +45,26 @@ def get_wind_data_by_id(id):
 """
 
 
-
 import json
 import requests
+from datetime import datetime
+import pandas as pd 
 
 class my_data:
     pass
 
-
-
 url = "https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&locationid=ZIP:28801&startdate=2010-05-01&enddate=2010-05-10"
 
+# temps= []
+# r = requests.get(url, headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
+# d = json.loads(r.text)
+# #print(d)
+# avg_temps = [item for item in d['results'] if item['datatype']=='TMIN']
+# temps += [item['value'] for item in avg_temps]
+# print(temps)
 
-r = requests.get(url, headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
-d = json.loads(r.text)
-avg_temps = [item for item in d['results'] if item['datatype']=='TAVG']
-print(avg_temps)
-
+#initialize dataframe
+df_temp = pd.DataFrame()
 
 
 #initialize lists to store data
@@ -70,13 +73,16 @@ dates_prcp = []
 temps = []
 prcp = []
 
+#get all weather data for all the states.
+
+
 #for each year from 2015-2019 ...
 for year in range(2015, 2020):
     year = str(year)
     print('working on year '+year)
     
     #make the api call
-    r = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&datatypeid=TAVG&limit=1000&stationid=GHCND:USW00023129&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={'token':Token})
+    r = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&datatypeid=TAVG&limit=1000&stationid=GHCND:USW00023129&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
     #load the api response as a json
     d = json.loads(r.text)
     #get all items in the response which are average temperature readings
@@ -85,5 +91,36 @@ for year in range(2015, 2020):
     dates_temp += [item['date'] for item in avg_temps]
     #get the actual average temperature from all average temperature readings
     temps += [item['value'] for item in avg_temps]
+
+
+#initialize dataframe
+df_temp = pd.DataFrame()
+
+#populate date and average temperature fields (cast string date to datetime and convert temperature from tenths of Celsius to Fahrenheit)
+df_temp['date'] = [datetime.strptime(d, "%Y-%m-%dT%H:%M:%S") for d in dates_temp]
+df_temp['avgTemp'] = [float(v)/10.0*1.8 + 32 for v in temps]
+
+print(df_temp)
+# #initialize lists to store data
+# dates_temp = []
+# dates_prcp = []
+# temps = []
+# prcp = []
+
+# #for each year from 2015-2019 ...
+# for year in range(2015, 2020):
+#     year = str(year)
+#     print('working on year '+year)
+    
+#     #make the api call
+#     r = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&datatypeid=TAVG&limit=1000&stationid=GHCND:USW00023129&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={'token':Token})
+#     #load the api response as a json
+#     d = json.loads(r.text)
+#     #get all items in the response which are average temperature readings
+#     avg_temps = [item for item in d['results'] if item['datatype']=='TAVG']
+#     #get the date field from all average temperature readings
+#     dates_temp += [item['date'] for item in avg_temps]
+#     #get the actual average temperature from all average temperature readings
+#     temps += [item['value'] for item in avg_temps]
 
 
