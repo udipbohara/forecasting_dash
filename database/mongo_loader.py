@@ -4,7 +4,7 @@ import requests
 import pandas as pd 
 import datetime
 import json
-import datetime
+from datetime import datetime
 
 # class Data_loader():
 #     def __init__():
@@ -17,6 +17,7 @@ import datetime
 #post = {"_id":0, "name":"udip", "score":5}
 
 #collection.delete_many({})
+
 
 class database_functions(object):
     def __init__(self):
@@ -31,15 +32,16 @@ class database_functions(object):
         self.live_temp_collection = self.db['live_temperature_data']
         #collection to store the latest dates for temperature and consumption API data 
         self.latest_date_collection = self.db['latest_date_data']
+       
 
     def delete_data(self, collection=None):
-        if collection != None:
-            return collection.remove()
-        else:
-            return self.consumption_collection.delete_many({})
+        # if collection != None:
+        #     return collection.remove()
+        # else:
+        return self.consumption_collection.delete_many({}), self.latest_date_collection.delete_many({})
 
     def check_date(self):
-        if self.store_consumption_data() > datetime.datetime.now():
+        if self.store_consumption_data() > datetime.now():
             pass 
 
     def store_consumption_data(self):
@@ -56,14 +58,15 @@ class database_functions(object):
             df = pd.DataFrame(json_data.get('series')[0].get('data'),
                             columns = ['Date','Consumption'])
 
-            max_date = df['Date'].iloc[0]
+            max_date = datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
+    
            # print(max_date)
 
             #insert the max date to the database 
             #after that use that value in the next iteration to get the data from it
             self.latest_date_collection.insert_one({
                 "_id": region,
-                "latest_date": df['Date'].iloc[0]
+                "latest_date": max_date
             })
 
             df['Year'] = df.Date.astype(str).str[:4]
@@ -81,40 +84,44 @@ class database_functions(object):
                 "region": region,
                 "consumption": consumption,
                 "consumption_dates": consumption_dates,
-                "last_updated": datetime.datetime.now()})
+                "last_updated": datetime.now()})
 
 
     def update_consumption_data(self):
-        with open('../states.json') as f:
-            states_data = json.load(f)
+        check_update_url = 'http://api.eia.gov/updates/?api_key=565ac7c9b7e000e9f3f58590dd7b9ba1&category_id=2122628&deep=true&rows=1' 
+        r = requests.get(check_update_url)
+        #print(r.json()['updates'][0]['updated'])
+        eia_updated_date = datetime.strptime(r.json()['updates'][0]['updated'][:-8], "%Y-%m-%dT%H:%M")
 
-        for region in [d['region'] for d in states_data]:
+        current_stored_date = self.latest_date_collection.find_one({'_id': 'CAL'})['latest_date']
+        if eia_updated_date < current_stored_date:
+            print(eia_updated_date)
+            print(current_stored_date)
+            exit()
+            with open('../states.json') as f:
+                states_data = json.load(f)
 
-            date = self.latest_date_collection.find_one({'_id': region})['latest_date']
+            for region in [d['region'] for d in states_data]:
 
-            # try to get latest data from it 
-            url = 'http://api.eia.gov/series/?api_key=' + self.api_key + \
-                  '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={date}'
+                # try to get latest data from it 
+                url = 'http://api.eia.gov/series/?api_key=' + self.api_key + \
+                    '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={current_stored_date}'
 
-            r = requests.get(url)
-            print(url)
-            print(r.status_code)
-
-            if r.status_code == 200:
-                break
-            else:
+                r = requests.get(url)
+                print(url)
+                print(r.status_code)
                 print(f'writing new data for time {datetime.datetime.now()}')
                 json_data = r.json()
                 df = pd.DataFrame(json_data.get('series')[0].get('data'),
                                 columns = ['Date','Consumption'])
 
-                max_date = df['Date'].iloc[0]
+                max_date = datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
                 print(max_date)
                 #insert the max date to the database 
                 #after that use that value in the next iteration to get the data from it
 
                 #update latest date
-                self.latest_date_collection.replace_one({"_id": region}, df['Date'].iloc[0])
+                self.latest_date_collection.replace_one({"_id": region}, max_date)
 
                 df['Year'] = df.Date.astype(str).str[:4]
                 df['Month'] = df.Date.astype(str).str[4:6]
@@ -138,6 +145,32 @@ class database_functions(object):
 
 
     def daily_temperature_data(self):
+        with open('../states.json') as f:
+            states_data = json.load(f)
+
+        df_state = pd.DataFrame(states_data)
+        df_state = df_state.explode('states')
+        #adding states coordinates
+        df2 = pd.read_csv('../states_coordinates.csv')
+        df2.drop('city', axis=1, inplace=True)
+        df_states_main = df_state.merge(df2, on='states')
+
+        df = df_states_main 
+        temperatures = {}
+        weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
+        for state in df['states']:
+            latitude = df.loc[df['states'] == state, 'latitude'].iloc[0]
+            longitude = df.loc[df['states'] == state, 'longitude'].iloc[0]
+            url = f"http://api.openweathermap.org/data/2.5/weather?lat={latitude}&lon={longitude}&units=imperial&appid={weather_api_key}"
+            r = requests.get(url)
+            json_data = r.json()
+            temperatures[state] = json_data["main"]["temp"]
+
+        df['temperature'] = df['states'].map(temperatures)
+       
+
+
+
         pass
 
 
@@ -154,6 +187,7 @@ class database_functions(object):
 if __name__ == "__main__":
     #exit()
     database = database_functions()
+    
     #database.delete_data()
     #database.store_consumption_data()
     database.update_consumption_data()
