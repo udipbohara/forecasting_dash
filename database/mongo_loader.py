@@ -4,7 +4,7 @@ import requests
 import pandas as pd 
 import datetime
 import json
-from datetime import datetime
+import datetime
 
 # class Data_loader():
 #     def __init__():
@@ -58,6 +58,8 @@ class database_functions(object):
             df = pd.DataFrame(json_data.get('series')[0].get('data'),
                             columns = ['Date','Consumption'])
 
+
+            #max_date = df['Date'].iloc[0]
             max_date = datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
     
            # print(max_date)
@@ -84,39 +86,37 @@ class database_functions(object):
                 "region": region,
                 "consumption": consumption,
                 "consumption_dates": consumption_dates,
-                "last_updated": datetime.now()})
+                "last_updated": datetime.datetime.now()})
 
 
     def update_consumption_data(self):
-        check_update_url = 'http://api.eia.gov/updates/?api_key=565ac7c9b7e000e9f3f58590dd7b9ba1&category_id=2122628&deep=true&rows=1' 
-        r = requests.get(check_update_url)
-        #print(r.json()['updates'][0]['updated'])
-        eia_updated_date = datetime.strptime(r.json()['updates'][0]['updated'][:-8], "%Y-%m-%dT%H:%M")
+        # check_update_url = 'http://api.eia.gov/updates/?api_key=565ac7c9b7e000e9f3f58590dd7b9ba1&category_id=2122628&deep=true&rows=1' 
+        # r = requests.get(check_update_url)
+        # eia_updated_date = datetime.strptime(r.json()['updates'][0]['updated'][:-8], "%Y-%m-%dT%H:%M")
 
-        current_stored_date = self.latest_date_collection.find_one({'_id': 'CAL'})['latest_date']
-        if eia_updated_date < current_stored_date:
-            print(eia_updated_date)
-            print(current_stored_date)
-            exit()
-            with open('../states.json') as f:
-                states_data = json.load(f)
+        # current_stored_date = self.latest_date_collection.find_one({'_id': 'CAL'})['latest_date']
+        
+        with open('../states.json') as f:
+            states_data = json.load(f)
 
-            for region in [d['region'] for d in states_data]:
-
-                # try to get latest data from it 
-                url = 'http://api.eia.gov/series/?api_key=' + self.api_key + \
-                    '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={current_stored_date}'
-
-                r = requests.get(url)
-                print(url)
-                print(r.status_code)
+        for region in [d['region'] for d in states_data]:
+            
+            max_date = self.latest_date_collection.find_one({'_id': 'CAL'})['latest_date']
+            print(max_date)
+            to_update_date = (max_date +datetime.timedelta(hours=1)).strftime("%Y%m%dT%HZ") 
+            # try to get latest data from it 
+            url = 'http://api.eia.gov/series/?api_key=' + self.api_key + \
+                '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={to_update_date}'
+            r = requests.get(url)
+            if (r.json().get('series')[0].get('data') == []):                
+                # print(url)
+                # print(r.status_code)
                 print(f'writing new data for time {datetime.datetime.now()}')
                 json_data = r.json()
                 df = pd.DataFrame(json_data.get('series')[0].get('data'),
                                 columns = ['Date','Consumption'])
 
                 max_date = datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
-                print(max_date)
                 #insert the max date to the database 
                 #after that use that value in the next iteration to get the data from it
 
@@ -187,7 +187,7 @@ class database_functions(object):
 if __name__ == "__main__":
     #exit()
     database = database_functions()
-    
+
     #database.delete_data()
     #database.store_consumption_data()
     database.update_consumption_data()
