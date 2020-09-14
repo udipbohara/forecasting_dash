@@ -76,13 +76,38 @@ prcp = []
 #get all weather data for all the states.
 
 
+
+
+
+
+
+stations = {'CAL':'GHCND:USR0000CACT',
+            'CENT':'GHCND:USW00013967',
+            'MIDW':'GHCND:USC00470045',
+            'MIDA':'GHCND:USW00014895',
+            'NE':'GHCND:USC00170409',
+            'CAR': 'GHCND:US1NCDV0002',
+            'NW':'GHCND:USR0000BLAC',
+            'SE':'GHCND:USW00053864',
+            'SW':'GHCND:US1AZMR0268',
+            'TEN': 'GHCND:USR0000TBIG',
+            'TEX' : 'GHCND:USC00410297',
+            'NY':'GHCND:USW00014732'}
+
+
+
+# function to look for missing values
+
+#pd.date_range(california_weather.index.min(), california_weather.index.max()).difference(california_weather.index)
+
+
 #for each year from 2015-2019 ...
-for year in range(2015, 2020):
+for year in range(2015, 2021):
     year = str(year)
     print('working on year '+year)
     
     #make the api call
-    r = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&datatypeid=TAVG&limit=1000&stationid=GHCND:USW00023129&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
+    r = requests.get('https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&datatypeid=TAVG&limit=1000&stationid=GHCND:USW00014732&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
     #load the api response as a json
     d = json.loads(r.text)
     #get all items in the response which are average temperature readings

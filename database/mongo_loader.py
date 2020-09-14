@@ -4,19 +4,6 @@ import requests
 import pandas as pd 
 import datetime
 import json
-import datetime
-
-# class Data_loader():
-#     def __init__():
-
-# cluster = MongoClient("mongodb+srv://udip:bohara@dashapp.gl7ed.mongodb.net/<dbname>?retryWrites=true&w=majority")
-
-# db = cluster["app_data"]
-# collection = db['app_data']
-
-#post = {"_id":0, "name":"udip", "score":5}
-
-#collection.delete_many({})
 
 
 class database_functions(object):
@@ -41,7 +28,7 @@ class database_functions(object):
         return self.consumption_collection.delete_many({}), self.latest_date_collection.delete_many({})
 
     def check_date(self):
-        if self.store_consumption_data() > datetime.now():
+        if self.store_consumption_data() > datetime.datetime.now():
             pass 
 
     def store_consumption_data(self):
@@ -60,7 +47,7 @@ class database_functions(object):
 
 
             #max_date = df['Date'].iloc[0]
-            max_date = datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
+            max_date = datetime.datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
     
            # print(max_date)
 
@@ -101,27 +88,27 @@ class database_functions(object):
 
         for region in [d['region'] for d in states_data]:
             
-            max_date = self.latest_date_collection.find_one({'_id': 'CAL'})['latest_date']
-            print(max_date)
+            max_date = self.latest_date_collection.find_one({'_id': 'NY'})['latest_date']
+            
             to_update_date = (max_date +datetime.timedelta(hours=1)).strftime("%Y%m%dT%HZ") 
             # try to get latest data from it 
             url = 'http://api.eia.gov/series/?api_key=' + self.api_key + \
                 '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={to_update_date}'
             r = requests.get(url)
-            if (r.json().get('series')[0].get('data') == []):                
+            if (r.json().get('series')[0].get('data') != []):                
                 # print(url)
                 # print(r.status_code)
-                print(f'writing new data for time {datetime.datetime.now()}')
+                print(f'writing new data for {region} at time {datetime.datetime.now()}')
                 json_data = r.json()
                 df = pd.DataFrame(json_data.get('series')[0].get('data'),
                                 columns = ['Date','Consumption'])
 
-                max_date = datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
+                max_date = datetime.datetime.strptime(df['Date'].iloc[0][:-1], "%Y%m%dT%H")
                 #insert the max date to the database 
                 #after that use that value in the next iteration to get the data from it
 
                 #update latest date
-                self.latest_date_collection.replace_one({"_id": region}, max_date)
+                
 
                 df['Year'] = df.Date.astype(str).str[:4]
                 df['Month'] = df.Date.astype(str).str[4:6]
@@ -136,15 +123,17 @@ class database_functions(object):
                 self.consumption_collection.update_one(
                     {"_id": region},
                     {"$push": {"consumption": {"$each": consumption},
-                                "consumption_dates": {"$each": consumption_dates},
-                                "last_updated" : datetime.datetime.now()           
+                                "consumption_dates": {"$each": consumption_dates}      
                                 }})
+                
+                self.consumption_collection.update_one({"_id": region}, { "$set":{"last_updated": datetime.datetime.now()}})
+                self.latest_date_collection.replace_one({"_id": region}, {"latest_date": max_date})
             
 
 
 
-
-    def daily_temperature_data(self):
+        #run this every hour 
+    def live_temperature_data(self):
         with open('../states.json') as f:
             states_data = json.load(f)
 
@@ -167,14 +156,19 @@ class database_functions(object):
             temperatures[state] = json_data["main"]["temp"]
 
         df['temperature'] = df['states'].map(temperatures)
-       
+        states = df.states.to_list()
+        temperatures = df.temperature.to_list()
+
+        self.live_temp_collection.update_one({
+                "_id": 0},
+                {"$set": {"state": states,
+                    "temperature": temperatures
+                }})
 
 
 
-        pass
-
-
-    def live_temperature_data(self):
+    #need to handle missing data 
+    def daily_temperature_data(self):
         pass
     
 
@@ -187,10 +181,10 @@ class database_functions(object):
 if __name__ == "__main__":
     #exit()
     database = database_functions()
-
+    database.live_temperature_data()
     #database.delete_data()
     #database.store_consumption_data()
-    database.update_consumption_data()
+    #database.update_consumption_data()
 
 
 
