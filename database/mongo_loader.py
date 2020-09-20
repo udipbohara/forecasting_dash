@@ -31,6 +31,7 @@ class database_functions(object):
         if self.store_consumption_data() > datetime.datetime.now():
             pass 
 
+    
     def store_consumption_data(self):
         with open('../states.json') as f:
             states_data = json.load(f)
@@ -123,7 +124,8 @@ class database_functions(object):
                 self.consumption_collection.update_one(
                     {"_id": region},
                     {"$push": {"consumption": {"$each": consumption},
-                                "consumption_dates": {"$each": consumption_dates}      
+                                "consumption_dates": {"$each": consumption_dates} 
+
                                 }})
                 
                 self.consumption_collection.update_one({"_id": region}, { "$set":{"last_updated": datetime.datetime.now()}})
@@ -162,7 +164,8 @@ class database_functions(object):
         self.live_temp_collection.update_one({
                 "_id": 0},
                 {"$set": {"state": states,
-                    "temperature": temperatures
+                    "temperature": temperatures,
+                    "last_updated": datetime.datetime.now() 
                 }})
 
 
@@ -172,8 +175,83 @@ class database_functions(object):
         pass
     
 
-    def get_all(self):
-        pass
+    def build_temperature_database(self):
+        stations = {'CAL':'GHCND:USR0000CACT',
+            'CENT':'GHCND:USW00013967', #Oklahoma
+            'MIDW':'GHCND:USR0000MMAR', #mississipi 
+            'MIDA':'GHCND:USW00014895', #ohio
+            'NW':'GHCND:USR0000BLAC', #Utah
+            'SE':'GHCND:USW00053864', #Alabama
+            'TEN':'GHCND:USR0000TBIG',#Tennessee
+            'NY':'GHCND:USW00014732',
+            'TEX' : 'GHCND:USW00013962',
+            'SW':'GHCND:USR0000AMOS', #Arizona
+            'NE':'GHCND:USR0000MMOO', #Maine 
+            'CAR': 'GHCND:USC00380184', #SC
+            }
+
+        for station, station_key in stations.items():
+            dates_temp = []
+            dates_prcp = []
+            temps = []
+            prcp = []
+            for year in range(2015, 2021):
+                year = str(year)
+            #  print('working on year '+year)
+                """cant find average temperatures for Carolinas so have to manually look for max and min temperatures and get the average of them"""
+                if station == 'CAR':
+                    r = requests.get(f'https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&limit=1000&stationid={station_key}&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
+                    d = json.loads(r.text)
+                    
+                    #print(d['results'])
+                    max_temps = [item['value'] for item in d['results'] if item['datatype']=='TMAX']
+                    min_temps = [item['value'] for item in d['results'] if item['datatype']=='TMIN']
+                    
+                    #print(max_temps)
+                    dates_temp += [item['date'] for item in [item for item in d['results'] if item['datatype']=='TMAX']] 
+                    
+                    avg_temps = [(i + j)/2 for i, j in zip(max_temps, min_temps)] 
+                
+                    temps += avg_temps
+                    
+                else:
+                    r = requests.get(f'https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=GHCND&datatypeid=TAVG&limit=1000&stationid={station_key}&startdate='+year+'-01-01&enddate='+year+'-12-31', headers={"token": "jGaCFmvUlYQggVrUZATZiCdwuCfTFwbi"})
+                    #load the api response as a json
+                    d = json.loads(r.text)
+                    #get all items in the response which are average temperature readings
+                    avg_temps = [item for item in d['results'] if item['datatype']=='TAVG']
+                    #get the date field from all average temperature readings
+                    dates_temp += [item['date'] for item in avg_temps]
+                    
+                    #get the actual average temperature from all average temperature readings
+                    temps += [item['value'] for item in avg_temps]
+
+            #initialize dataframe
+            df_temp = pd.DataFrame()
+            #populate date and average temperature fields (cast string date to datetime and convert temperature from tenths of Celsius to Fahrenheit)
+            df_temp['date'] = [datetime.datetime.strptime(d, "%Y-%m-%dT%H:%M:%S") for d in dates_temp]
+            df_temp['avgTemp'] = [float(v)/10.0*1.8 + 32 for v in temps]
+
+            
+            '''
+            there is date with missing values so that needs to be taken care of 
+            look for any missing indexes (datetimes) and replace it with the nearest available temperature 
+            '''
+            df = df_temp.set_index(df_temp['date'])
+            idx = pd.date_range(df.index.min(), df.index.max())
+            df = df.reindex(idx, method='nearest')
+        
+
+            self.temperature_collection.insert_one(
+            {"_id": station,
+            "region": station,
+            "temperature": df.avgTemp.tolist(),
+            "dates": df.date.tolist(),
+            "latest_date": df.date.max(),
+            "last_updated": datetime.datetime.now()})
+            
+            print(f'{station} ----> success')
+   
 
 
 
@@ -181,10 +259,11 @@ class database_functions(object):
 if __name__ == "__main__":
     #exit()
     database = database_functions()
-    database.live_temperature_data()
+    #database.live_temperature_data()
     #database.delete_data()
     #database.store_consumption_data()
-    #database.update_consumption_data()
+   # database.update_consumption_data()
+    database.build_temperature_database()
 
 
 
