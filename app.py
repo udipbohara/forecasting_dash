@@ -618,6 +618,7 @@ def update_cholorpeth_realtime(n):
         url = 'http://api.eia.gov/series/?api_key=' + eia_api_key + \
             '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={date}'
 
+        print(url)
         r = requests.get(url)
         json_data = r.json()
         consumptions[region] = json_data.get('series')[0].get('data')[-1][1]

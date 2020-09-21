@@ -6,7 +6,7 @@ import datetime
 import json
 
 
-class database_functions(object):
+class Access_database(object):
     def __init__(self):
         self.api_key = "565ac7c9b7e000e9f3f58590dd7b9ba1"
         self.cluster = MongoClient("mongodb+srv://udip:bohara@dashapp.gl7ed.mongodb.net/<dbname>?retryWrites=true&w=majority")
@@ -109,8 +109,6 @@ class database_functions(object):
                 #after that use that value in the next iteration to get the data from it
 
                 #update latest date
-                
-
                 df['Year'] = df.Date.astype(str).str[:4]
                 df['Month'] = df.Date.astype(str).str[4:6]
                 df['Day'] = df.Date.astype(str).str[6:8]
@@ -147,17 +145,27 @@ class database_functions(object):
         df_states_main = df_state.merge(df2, on='states')
 
         df = df_states_main 
-        temperatures = {}
+        current_temperature = {}
+        daily_forecasts = {}
         weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
         for state in df['states']:
             latitude = df.loc[df['states'] == state, 'latitude'].iloc[0]
             longitude = df.loc[df['states'] == state, 'longitude'].iloc[0]
-            url = f"http://api.openweathermap.org/data/2.5/weather?lat={latitude}&lon={longitude}&units=imperial&appid={weather_api_key}"
+            url = f"https://api.openweathermap.org/data/2.5/onecall?lat={latitude}&lon={longitude}&exclude=hourly,minutely&units=imperial&appid={weather_api_key}"
             r = requests.get(url)
             json_data = r.json()
-            temperatures[state] = json_data["main"]["temp"]
 
-        df['temperature'] = df['states'].map(temperatures)
+            current_temperature[state] = json_data["current"]["temp"]
+            daily_forecasts[state] = [d['temp']['day'] for d in json_data["daily"]]
+            
+
+        # df['current_temperature'] = df['states'].map(current_temperature)
+        # df['daily_forecasts'] = df['states'].map(daily_forecasts[state])
+
+        print(daily_forecasts)
+        exit() 
+        print(df)
+        exit() 
         states = df.states.to_list()
         temperatures = df.temperature.to_list()
 
@@ -174,7 +182,11 @@ class database_functions(object):
     def daily_temperature_data(self):
         pass
     
-
+        """
+        this is to load historical data from 2015 till now for the stations 
+        calls from two apis, NOAA and weather.api.org NOAA usually has some missing days in between (example upto 3 days before)
+        weatherapi gives historical data from upto 5 days before so using that to fill in the missing dates. 
+        """
     def build_temperature_database(self):
         stations = {'CAL':'GHCND:USR0000CACT',
             'CENT':'GHCND:USW00013967', #Oklahoma
@@ -192,9 +204,7 @@ class database_functions(object):
 
         for station, station_key in stations.items():
             dates_temp = []
-            dates_prcp = []
             temps = []
-            prcp = []
             for year in range(2015, 2021):
                 year = str(year)
             #  print('working on year '+year)
@@ -257,13 +267,16 @@ class database_functions(object):
 
 
 if __name__ == "__main__":
+    pass
     #exit()
-    database = database_functions()
-    #database.live_temperature_data()
+    database = Access_database()
+    #database.consumption_collection.delete_many({})
+    database.live_temperature_data()
     #database.delete_data()
     #database.store_consumption_data()
-   # database.update_consumption_data()
-    database.build_temperature_database()
+    #database.update_consumption_data()
+    #database.temperature_collection.delete_many({})
+    #database.build_temperature_database()
 
 
 

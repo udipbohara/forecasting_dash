@@ -1,187 +1,123 @@
+import requests
+import datetime
+import pandas as pd 
+import time 
+import numpy as np 
 
 
 
-# import requests
-# import pandas as pd 
-# import json
-# import datetime
-# import plotly.express as px 
+f_date = datetime.datetime.strptime('2020-09-18', '%Y-%m-%d')
+l_date = datetime.datetime.utcnow()
+delta = l_date - f_date
+print(delta.days)
 
 
-# import requests
-# import pandas as pd 
-# import json
-# import datetime
-# import plotly.express as px 
-# import numpy as np 
+# CENT = 35.3097654,-98.7165585
+def get_historical_temps():
+    # five_days_ago = datetime.datetime.utcnow() - datetime.timedelta(5)
+    # four_days_ago = datetime.datetime.utcnow() - datetime.timedelta(4)
+    # unix_time4 = four_days_ago.strftime("%s")
+    # unix_time= five_days_ago.strftime("%s")
 
-# import matplotlib.pyplot as plt
-# from pmdarima.arima import ARIMA
-# from datetime import timedelta
-# import plotly.graph_objects as go
+    weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
+    latitude,longitude = '32.6010112','-86.6807365'
 
-# pd.plotting.register_matplotlib_converters()
+    temperatures = []
 
-# df = pd.read_csv('data/new_york.csv')
-# df['Date'] = pd.to_datetime(df['Date'])
-
-# #converting data to daily usage.
-# df.index = df.Date
-# df = df.drop('Date', axis=1)
-# # resample the dataframe every 1 day (D) and sum ovr each day
-# df = df.resample('D').sum()
-# df = df.tz_localize(None)
-
-
-# nyc_weather = pd.read_csv('data/weatherNY.csv')
-# nyc_weather['DATE'] = pd.to_datetime(nyc_weather['DATE'])
-# nyc_weather = nyc_weather.set_index('DATE')
-# nyc_weather.drop(['NAME','STATION'],axis=1,inplace=True)
-# nyc_weather = nyc_weather['2015-07-01':'2020-08-10']
-
-# df = df[:'2020-08-10']
+    #get weather from five days ago till now.
+    for i in range(5,1,-1):
+        print(i)
+        time = datetime.datetime.utcnow() - datetime.timedelta(i)
+        unix_time= time.strftime("%s")
+        print(unix_time)
+        url = f"https://api.openweathermap.org/data/2.5/onecall/timemachine?lat={latitude}&lon={longitude}&dt={unix_time}&units=imperial&appid={weather_api_key}"
+        r = requests.get(url)
+        print(r.json().keys())
+        my_list = r.json()["hourly"]
+        temp = [d['temp'] for d in my_list]
+        temperatures.append(round(np.mean(temp),2))
+    
+    print(temperatures)
 
 
-# #trying 1 day increments with EXOG. MAYBE BEST CANDIDATE? with fourier terms june to june as 638 and august to august 516
+weather_api_key = '4ede6fba261e0478b6419dbd05bf878a'
+latitude,longitude = '32.6010112','-86.6807365'
+url = f"https://api.openweathermap.org/data/2.5/onecall?lat={latitude}&lon={longitude}&exclude=hourly,minutely&units=imperial&appid={weather_api_key}"
+r = requests.get(url)
+#print(r.json().keys())
 
-# day = 7
-# real_values = []
-# predictions = []
-
-# df1 = df["2016":"2019"]
-# nyc_weather = nyc_weather["2016":"2019"]
-
-# y = df1.Consumption
-
-# exog = pd.DataFrame({'date': y.index})
-# exog = exog.set_index(pd.PeriodIndex(exog['date'], freq='D'))
-# exog['is_weekend'] = np.where(exog.index.dayofweek < 5,0,1)
+current_temp = r.json()["current"]["temp"]
+print(current_temp)
 
 
+daily_temp = [d['temp']['day'] for d in r.json()["daily"]]
+print(daily_temp)
+# # region = "NY"
 
-# #add weather data
-
-# exog['TMIN'] = nyc_weather['TMIN'].values
-
-
-# exog['sin1'] = np.sin(2 * np.pi * exog.index.dayofyear / 638)
-# exog['cos1'] = np.cos(2 * np.pi * exog.index.dayofyear / 638)
-
-
-# exog['sin2'] = np.sin(4 * np.pi * exog.index.dayofyear /638)
-# exog['cos2'] = np.cos(4 * np.pi * exog.index.dayofyear /638)
+# # date = "20200910T22Z"
+# date = (datetime.datetime.now() -datetime.timedelta(days=1)).strftime("%Y%m%d") + 'T24Z'
+# print(date)
 
 
-# exog['sin3'] = np.sin(2 * np.pi * exog.index.dayofyear / 516)
-# exog['cos3'] = np.cos(2 * np.pi * exog.index.dayofyear / 516)
+# eia_api_key = "565ac7c9b7e000e9f3f58590dd7b9ba1"
+# # date = (datetime.datetime.now() -datetime.timedelta(days=1)).strftime("%Y%m%d") + 'T24Z'
+
+# # print(date)
+# # regio
+# region = 'CAL'
+# key = f'EBA.{region}-ALL.D.H'
 
 
-# exog['sin4'] = np.sin(4 * np.pi * exog.index.dayofyear /516)
-# exog['cos4'] = np.cos(4 * np.pi * exog.index.dayofyear /516)
+# url = 'http://api.eia.gov/series/?api_key=' + eia_api_key + \
+#     '&series_id=' + key + '&start=20200913T01Z' #'&start=20200911T24Z'
+
+# print(url)
+# r = requests.get(url)
+# json_data = r.json()
+# print(json_data.get('series')[0].get('data') == [])
+
+# exit() 
+
+# url = 'http://api.eia.gov/series/?api_key=565ac7c9b7e000e9f3f58590dd7b9ba1&series_id=EBA.CAL-ALL.D.H&start=20200911T24Z'
 
 
 
-# exog = exog.drop(columns=['date'])
-
-# num_to_update = 0
-
-
-# y_to_train = y.iloc[:(len(y)-100)]    
-# exog_to_train = exog.iloc[:(len(y)-100)]
-
-# dates = []
-
-# steps = []
-
-# for i in range(5):
-
-#     #first iteration train the model
-#     if i == 0:
-#         arima_exog_model = ARIMA(order=(3, 0, 1), seasonal_order=(2, 0, 0, 7),exogenous=exog_to_train, error_action='ignore',
-#                                 initialization='approximate_diffuse', suppress_warnings=True).fit(y=y_to_train)  
-
-
-#         preds = arima_exog_model.predict_in_sample(exog_to_train)
-        
-#         #first prediction
-#         y_to_test = y.iloc[(len(y)-100):(len(y)-100+day)]
-#         y_exog_to_test = exog.iloc[(len(y)-100):(len(y)-100+day)]
-#         y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=y_exog_to_test)
-        
-#         real_values.append(y_to_test.values)
-#         predictions.append(y_arima_exog_forecast.tolist())
-        
-#         dates.append(y_to_test.index)
-#         steps.append(y_to_test.index[-1])
-                                                 
-#         #y_arima_exog_forecast = arima_exog_model.predict(n_periods=2, exogenous=exog_to_test)
-#     else:
-#         y_to_update = y.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
-#         exog_to_update = exog.iloc[(len(y)-100+num_to_update):(len(y)-100+num_to_update)+day]
-
-#         #to test
-#         to_test = y.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
-#         exog_to_test = exog.iloc[(len(y)-100+num_to_update)+day:(len(y)-100+num_to_update)+(day*2)]
-#         #update the model
-
-#         arima_exog_model.update(y_to_update,exogenous=exog_to_update)
-#         y_arima_exog_forecast = arima_exog_model.predict(n_periods=day, exogenous=exog_to_test)
-
-#         dates.append(to_test.index)
-#         steps.append(to_test.index[-1])
-
-#         predictions.append(y_arima_exog_forecast.tolist())    
-#         real_values.append(to_test.values)
-        
-        
-#         num_to_update += day
-
-
-# predict =  [item for sublist in predictions for item in sublist]
-# true = [item for sublist in real_values for item in sublist]
-# dates = [item for sublist in dates for item in sublist]
-
-# # predict_increments = [x for x in [i for i in range(len(true))] if x%day == 0]
-# # predict_increments = [date for date in [i + timedelta(days=i) for i in dates]]
-# plt.figure(figsize=[50,10])
-
-# # plt.plot(dates,true, label='True')
-# # plt.plot(dates,predict, 'b',label='Predicted')
 
 
 
-#     #in sample preds
-
-# # plt.figure(figsize=[25,7])
 
 
 
-# #for viz purposes
-# y_to_train2 = y_to_train[-200:]
-# preds = preds[-200:]
-# y_to_train2 = y_to_train2.to_frame()
-# fig = go.Figure()
-# # Create and style traces
-# fig.add_trace(go.Scatter(x=y_to_train2.index, y=y_to_train2.Consumption, name='True values',
-#                         line=dict(color='firebrick', width=4,dash='dot')))
-
-# fig.add_trace(go.Scatter(x=y_to_train2.index, y=preds[-200:], name='In-sample Prediction',
-#                         line=dict(color='royalblue', width=4)))
-
-# fig.add_trace(go.Scatter(x=dates, y=predict, name='Prediction',
-#                         line=dict(color='green', width=4)))
-
-# fig.add_trace(go.Scatter(x=dates, y=true, name='True',
-#                         line=dict(color='firebrick', width=4,dash='dot')))
-
-# fig.update_layout(title='Electricity Consumption in New York',
-#                 xaxis_title='Date',
-#                 yaxis_title='Consumption',
-#                 xaxis_showgrid=True,
-#                 yaxis_showgrid=True)
-#                 #autosize=False,
-#                 #width=500,
-#                 #height=500,)
 
 
-# fig.show()
+
+
+# #url = "http://api.eia.gov/series/?api_key=565ac7c9b7e000e9f3f58590dd7b9ba1&series_id=EBA.CAL-ALL.D.H&start=20200911T24Z"
+
+# url = 'http://api.eia.gov/updates/?api_key=565ac7c9b7e000e9f3f58590dd7b9ba1&category_id=2122628' #[&deep=true|false][&firstrow=nnnnn][&rows=nn][&out=xml|json]
+
+# url = 'http://api.eia.gov/updates/?api_key=565ac7c9b7e000e9f3f58590dd7b9ba1&category_id=2122628&deep=true'#&rows=5' 
+# r = requests.get(url)
+
+# print(r.json())
+
+
+# #print(r.json()['updates'][0]['updated'])
+# date = r.json()['updates'][0]['updated'][:-8]
+
+
+# updated_date = datetime.strptime(date, "%Y-%m-%dT%H:%M")
+# print(updated_date)
+
+# date = "20200910T22"
+# date_stored= datetime.strptime(date, "%Y%m%dT%H")
+
+
+# if updated_date > date_stored:
+#     print('yes') 
+# else:
+#     print('no')
+# #print(r.Response)
+
+
+
