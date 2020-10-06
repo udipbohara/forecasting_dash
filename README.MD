@@ -1,6 +1,8 @@
 Interactive Dash app visualizing and forecasting electricity consumption in the US through econometric modeling and FB prophet.
 
 
+![](demo.gif)
+
 Data sources: 
 
 for historical wether data:
