@@ -1,7 +1,7 @@
 Interactive Dash app visualizing and forecasting electricity consumption in the US through econometric modeling and FB prophet.
 
 
-_currently integrating a mongodb database for backend support to make API calls._
+_currently integrating a mongodb database for backend support to make API calls for Heroku Deployment._
 
 __current progress:__
 
