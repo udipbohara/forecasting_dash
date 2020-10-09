@@ -12,6 +12,7 @@ temperature data from https://noaa.gov to pull electricity data
     - The ARIMA model uses exogenous variables (temperature for better prediction)
 - Cumulative consumptions using chloropeth maps (get consumption within a timeframe or individual days), polar chart(get consumption for each year for each region based on the seasons)
 <br>
+
 __current progress (GIF):__
 
 ![](demo.gif)
