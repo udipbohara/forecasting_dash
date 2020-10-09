@@ -3,6 +3,9 @@ Interactive Dash app visualizing and forecasting electricity consumption in the 
 This Interactive app utilizes data from https://www.eia.gov/opendata/ API to pull electricity consumption data.<br>
 temperature data from https://noaa.gov to pull electricity data 
 
+To run the app:
+- run app.py after installing requirements.txt to your venv
+
 ### Features/Tasks Completed:
 - Live clock
 - Update of news every 30 minutes
