@@ -18,7 +18,7 @@ To run the app:
 
 __current progress (GIF):__
 
-![](demo2.gif)
+![](demo.gif)
 
 
 ### Currently working on :
