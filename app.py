@@ -67,7 +67,7 @@ def update_news():
     max_rows = 10
     return html.Div(
         children=[
-            html.P(className="p-news", children="Headlines: Updates every 30 minutes"),
+            html.P(className="p-news", children="Headlines: Updates every 10 minutes"),
             html.P(
                 className="p-news float-right",
                 children="Last update : "
@@ -180,14 +180,14 @@ app.layout = html.Div(children=[
                                children=[
                                    #interval component for news update every fifteen minutes
                                    #CHANGE THIS
-                                   dcc.Interval(id="i_news", interval= 45* 6000, n_intervals=0),
+                                   dcc.Interval(id="i_news", interval= 10* 6000, n_intervals=0),
                                    # Interval component for live clock
                                    dcc.Interval(id="interval", interval=1 * 1000, n_intervals=0),
                                    dcc.Interval(id='graph_update', interval = 60*6000, n_intervals=0),
                                    dcc.Interval(id='weather_update', interval = 60*6000, n_intervals=0),
                                    html.Div(className='four columns div-user-controls',
                                         children = [
-                                            html.H2('Forecasting - New York Electricity Consumption'),
+                                            html.H2('Timeseries Visualization and Modeling - Electricity Consumption'),
                                             html.P('''Visualising time series with Plotly - Dash. This application is used for visualization of time series data (temperature and consumption of electricity in regions of the US. It also uses econometric as well as machine learning models 
                                                     for forecasting the series. This app continuously makes API calls for data, so there might be a slight delay in displaying some graphs/figures.'''),
                                             html.P('Electricity Distribution Region', style={'text-align':'center'}),
@@ -203,12 +203,6 @@ app.layout = html.Div(children=[
                                    # Define the left element
                                     html.Div(className='eight columns div-for-charts bg-grey',
                                             children=[
-                                                dcc.Slider(id='slider',
-                                                        min=0,
-                                                        max=4,
-                                                        marks={i: 'Label {}'.format(i) for i in range(5)},
-                                                        value=5,
-                                                    )  ,
                                                 dropdown,
                                                 dcc.Graph(id='timeseries',
                                                     config={'displayModeBar': False},
@@ -375,7 +369,7 @@ def update_graph(selected_dropdown_value):
     fig=px.line(temp_df,
             x='Date',
             y='Consumption',
-            title='Daily Consumption'
+            title='Historical Electricity Consumption'
             ).update_layout(
             xaxis_showgrid=True,
             yaxis_showgrid=True,
@@ -618,7 +612,7 @@ def update_cholorpeth_realtime(n):
         url = 'http://api.eia.gov/series/?api_key=' + eia_api_key + \
             '&series_id=' + f'EBA.{region}-ALL.D.H' +f'&start={date}'
 
-        print(url)
+
         r = requests.get(url)
         json_data = r.json()
         consumptions[region] = json_data.get('series')[0].get('data')[-1][1]
