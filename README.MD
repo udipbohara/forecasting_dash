@@ -42,7 +42,7 @@ __Note__: The consumption is given in Thousand $MWh$. However, I am going to ref
 Here is the Frequency plot for the data. As we can see the mean is around 18041. If we plot the KDE for each year, we can see that there is a small shift towards lower consumption in 2019.
 This could mean that there are investments in alternative source of energy or could just be an anomaly.
 
-<p style="text-align: center;"><b>Two plots that show</b></p>
+
 
 <div class="row"> 
   <div class="column">
@@ -59,7 +59,6 @@ It is interesting to see how the electricity demand is stratified by different t
 We can see that the highest consumptions are during July and August which can be attributed to Summer months and the usage of Air-conditioining increases the demand.
 We can clearly see that the highlest consumption is around 6:00PM EST for the weekdays. Whereas the weekends has comparatively lower demand. This can be attributed to holidays.
 
-<p style="text-align: center;"><b>Frequency and Yearly KDE plots</b></p>
 <div class="row"> 
   <div class="column">
     <img src="/images/1_d.png" width='100%'>
@@ -68,8 +67,8 @@ We can clearly see that the highlest consumption is around 6:00PM EST for the we
     <img src="/images/1_e.png" width='100%' height='95%'>
   </div>
 </div>
-
 <br>
+
 This can futher be validated with a box/whisker plot:
 
 Here, Saturday and Sunday are automatically non-working days whereas Holidays are accounted for weekdays to see the distribution of working vs non working days.
@@ -332,5 +331,5 @@ __Current progress (GIF):__
 <img src="demo.gif">
 
 
-### Currently working on :
+__Currently working on :__
 - integrating a MongoDB database for backend support to make API calls for Heroku Deployment
