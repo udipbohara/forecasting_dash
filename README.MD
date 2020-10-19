@@ -139,16 +139,16 @@ ARIMA(p,d,q) is generalized form where p is the order of the autoregressive poly
 
 Example: ARMA(1,1), Here is what the equation for Demand $(D)$ be
 
-$$D_{t} =  \beta_{0} + \beta_{1}D_{t-1} + \phi_{1}\epsilon_{t-1} + \epsilon_{t}$$ <br>
+$D_{t} =  \beta_{0} + \beta_{1}D_{t-1} + \phi_{1}\epsilon_{t-1} + \epsilon_{t}$ <br>
 
 where, <br>
-$$\beta_{0} + \beta_{1}D_{t-1}$$ is the AR(1) <br>which would answer how much demand today based on demand yesterday?
+$\beta_{0} + \beta_{1}D_{t-1}$ is the AR(1) <br>which would answer how much demand today based on demand yesterday?
 
-$$\phi_{1}\epsilon_{t-1} + \epsilon_{t}$$ is the MA(1) <br>which would answer how much demand today based on the residual error (error by how much we were wrong by) from yesterday. $\epsilon_{t}$ is the error from today.
+$\phi_{1}\epsilon_{t-1} + \epsilon_{t}$ is the MA(1) <br>which would answer how much demand today based on the residual error (error by how much we were wrong by) from yesterday. $\epsilon_{t}$ is the error from today.
 
 Hence, for our forecast of basic ARMA(1,1) would be:
 
-$$\hat{D}_{t} =   \beta_{0} + \beta_{1}D_{t-1} + \phi_{1}\epsilon_{t-1}$$
+$\hat{D}_{t} =   \beta_{0} + \beta_{1}D_{t-1} + \phi_{1}\epsilon_{t-1}$
 
 
 
@@ -174,12 +174,12 @@ and the ACF/PACF plots look like this:
 
 ## Multiple Seasonality:
 
-__Exogenous Variables  with $$SARIMAX(p,d,q)(P,D,Q)m$$:__
-$$p,d,q$$ were discussed earlier. $$P,D,Q$$ and m are as follows:
-- $$P$$ : The order of the seasonal component for the auto-regressive (AR) model.
-- $$D$$ : THe integration order of the seasonal process.
-- $$Q$$ : The order of the seasonal component of the moving average(MA) model.
-- $$m$$ : The number of observations per season cycle
+__Exogenous Variables  with $SARIMAX(p,d,q)(P,D,Q)m$:__
+$p,d,q$ were discussed earlier. $P,D,Q$ and m are as follows:
+- $P$ : The order of the seasonal component for the auto-regressive (AR) model.
+- $D$ : THe integration order of the seasonal process.
+- $Q$ : The order of the seasonal component of the moving average(MA) model.
+- $m$ : The number of observations per season cycle
 
 There are two types of exogenous variables that I am adding to the forecasting:
 
