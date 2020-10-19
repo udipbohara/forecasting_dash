@@ -10,7 +10,7 @@ This app takes EIA data from all the regions from the US for electricity demand 
 
 <div>
     <center>
-    <img src="/images/main.png" width="500"/>
+    <img src="/images/main.png"/>
         <br>
      <text><b> Fig: Different Regions and their Corresponding States </b> <br> 
          <i> (Source: https://www.eia.gov)</i>
