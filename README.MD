@@ -330,7 +330,7 @@ live temperature data from https://noaa.gov to pull electricity data.
 
 __Current progress (GIF):__
 
-<img src="/images/demo.gif">
+<img src="demo.gif">
 
 
 ### Currently working on :
