@@ -1,9 +1,5 @@
 
 
-  <div style="text-align: center">
-  <i class="fa fa-code"></i> <a href="https://github.com/udipbohara/forecasting_dash">Code to this Repo</a>
-  </div>
-<br>
 
 Time-Series Forecasting is a very relevant business problem that can be highly effective in proper allocation of resources to meet the need/demand. In this particular project, I take on the problem of forecasting Electricity demand for all the regions of the USA. 
 
@@ -40,7 +36,7 @@ The energy demand data is available in thousand mega-watthours and is avwailable
 
 __Note__: The consumption is given in Thousand $MWh$. However, I am going to refer it as just MWh in this project for the sake of simplicity.
 
-<img src="images/forecasting/1_a.png">
+<img src="/images/1_a.png">
 
 
 Here is the Frequency plot for the data. As we can see the mean is around 18041. If we plot the KDE for each year, we can see that there is a small shift towards lower consumption in 2019.
@@ -50,10 +46,10 @@ This could mean that there are investments in alternative source of energy or co
 
 <div class="row"> 
   <div class="column">
-    <img src="images/forecasting/1_b.png" width='100%'>
+    <img src="/images/1_b.png" width='100%'>
   </div>
   <div class="column">
-    <img src="images/forecasting/1_c.png" width='92%' height='84%'>
+    <img src="/images/1_c.png" width='92%' height='84%'>
   </div>
 </div>
 
@@ -66,10 +62,10 @@ We can clearly see that the highlest consumption is around 6:00PM EST for the we
 <p style="text-align: center;"><b>Frequency and Yearly KDE plots</b></p>
 <div class="row"> 
   <div class="column">
-    <img src="images/forecasting/1_d.png" width='100%'>
+    <img src="/images/1_d.png" width='100%'>
   </div>
   <div class="column">
-    <img src="images/forecasting/1_e.png" width='100%' height='95%'>
+    <img src="/images/1_e.png" width='100%' height='95%'>
   </div>
 </div>
 
@@ -78,7 +74,7 @@ This can futher be validated with a box/whisker plot:
 
 Here, Saturday and Sunday are automatically non-working days whereas Holidays are accounted for weekdays to see the distribution of working vs non working days.
 
-<img src="images/forecasting/1_f.png">
+<img src="/images/1_f.png">
 
 
 
@@ -91,7 +87,7 @@ Weather data can be obtained from [National Oceanic and Atmospheric Administrati
 Plotting the consumption values sampled by day with temperatures gives us this:
 Here, I have plotted summer as months from June to Oct and Nov to May as Winter
 
-<img src="images/forecasting/2_a.png" width="70%" height="70%">
+<img src="/images/2_a.png" width="70%" height="70%">
 
 
 
@@ -158,22 +154,22 @@ $$\hat{D}_{t} =   \beta_{0} + \beta_{1}D_{t-1} + \phi_{1}\epsilon_{t-1}$$
 
 Seasonal Decompostion of the demand:
 
-<img src="images/forecasting/3_a.png" width="90%" height="90%">
+<img src="/images/3_a.png" width="90%" height="90%">
 
 - residual is what's left over when the trend and seasonality have been removed. 
 
-<img src="images/forecasting/3_b.png" width="50%" height="50%">
+<img src="/images/3_b.png" width="50%" height="50%">
 
 There is clear seasonality trend (7 days) which we can take away by doing a differencing.
 
 
 After doing the differencing, the data looks like this:
 
-<img src="images/forecasting/3_c.png" width="50%" height="50%">
+<img src="/images/3_c.png" width="50%" height="50%">
 
 and the ACF/PACF plots look like this:
 
-<img src="images/forecasting/3_d.png" width="60%" height="60%">
+<img src="/images/3_d.png" width="60%" height="60%">
 
 
 ## Multiple Seasonality:
@@ -193,7 +189,7 @@ There are two types of exogenous variables that I am adding to the forecasting:
 
 SARIMAX is SARIMA with exogenous variables added. Since we have multiple seasonality. Weekly and then yearly, we can attribute to the yearly seasonality by adding exogenous variables in form of Fourier terms. Since there are complex seasonality involved with these time series, it is difficult to accurately parametrize them. 
 
-<img src="images/forecasting/3_e.png" width="60%" height="60%">
+<img src="/images/3_e.png" width="60%" height="60%">
 
 Looking at 2 years AutoCorrelation plots, we can see that there are multiple seasonalities to be accounted for.
 I decided to add seasonality for every 7, 150 and 365 days.
@@ -247,35 +243,35 @@ Output: Best model: (1, 1, 3)(2, 0, 1, 7) + Number of Exog: 5, AIC: 35689.827416
 
 I used different windows, to test the results. I then calculate the absolute errors for each day of the prediction window.
 
-<img src="images/forecasting/4_a.png">
-<img src="images/forecasting/4_b.png" width="70%" height="70%">
+<img src="/images/4_a.png">
+<img src="/images/4_b.png" width="70%" height="70%">
 
 ----
 
-<img src="images/forecasting/4_c.png" width="90%" height="90%">
-<img src="images/forecasting/4_d.png" width="70%" height="70%">
+<img src="/images/4_c.png" width="90%" height="90%">
+<img src="/images/4_d.png" width="70%" height="70%">
 
 ----
-<img src="images/forecasting/6_a.png" width='100%'>
-<img src="images/forecasting/6_b.png" width="70%" height="70%">
+<img src="/images/6_a.png" width='100%'>
+<img src="/images/6_b.png" width="70%" height="70%">
 
 ----
 
-<img src="images/forecasting/5_e.png" width='100%'>
-<img src="images/forecasting/5_f.png" width="70%" height="70%">
+<img src="/images/5_e.png" width='100%'>
+<img src="/images/5_f.png" width="70%" height="70%">
 
 We can see that the model does fairly well considering that I was unable to capture the full nature of the series. I have tried my best to add exogenous variables and account for seasonality in these but since these series have such high yield and variables that are unpredictable, it is difficult to get very precise results. Smaller time windows are easier to forecast compared to larger ones. This is very apparent when the model tries to forecast for 365 days. Firstly, 
 
 Hence, This model would be appropriate for shorter forecasts.
 
 Similarly, If we take example of California with the same process mentioned above, these are the parameters and results obtained:
-<img src="images/forecasting/5_b.png">
-<img src="images/forecasting/5_a.png" width="70%" height="70%">
+<img src="/images/5_b.png">
+<img src="/images/5_a.png" width="70%" height="70%">
 
 ----
 
-<img src="images/forecasting/5_c.png">
-<img src="images/forecasting/5_d.png" width="70%" height="70%">
+<img src="/images/5_c.png">
+<img src="/images/5_d.png" width="70%" height="70%">
 
 ---
 
@@ -287,20 +283,20 @@ A common LSTM (Long-Short-Term-Memory) unit is composed of a cell, an input gate
 I have used previous day as the predictor for current day i.e, convert series to supervised learning, i.e. lagged time-series is input, next value is target. I have cross validated the dataset and then used the best fit model to make predictions. I did a parameterized search to get the best LSTM model.
 
 
-<img src="images/forecasting/7_a.png">
+<img src="/images/7_a.png">
 
 ---
 
-<img src="images/forecasting/7_b.png">
+<img src="/images/7_b.png">
 
 __Dilated Causal Convolutional Network__: [Source](https://github.com/kristpapadopoulos/seriesnet/blob/master/seriesnet.py)
 I have modified the original program to make step-wise daily predictions based on the data from previous date. 
 The network contains stacks of dilated convolutions that allow it to access a broad range of history when forecasting, a ReLU activation function and conditioning is performed by applying multiple convolutional filters in parallel to separate time series which allows for the fast processing of data and the exploitation of the correlation structure between the multivariate time series. It is based on deep convolutional [WaveNet architecture](https://deepmind.com/blog/article/wavenet-generative-model-raw-audio). 
 
-<img src="images/forecasting/8_a.png">
+<img src="/images/8_a.png">
 
 
-<img src="images/forecasting/8_b.png">
+<img src="/images/8_b.png">
 
 ### LSTM vs SARIMAX vs Dilated CNN.
 - Generally LSTM works better if we are dealing with huge amount of data and enough training data is available, while ARIMA is better for smaller datasets.
@@ -308,11 +304,11 @@ The network contains stacks of dilated convolutions that allow it to access a br
 
 The mean absolute errors in the plots were very similar for both New York and California. Even though the models are very different in their approach for prediction, 
 
-<img src="images/forecasting/8_c.png">
+<img src="/images/8_c.png">
 
 ---
 
-<img src="images/forecasting/8_d.png">
+<img src="/images/8_d.png">
 
 For both regions, Dilated CNN performed the best. The season for this might be the availability of large data. I have ~1800 datapoints to be trained on. Due to that, the LSTM and CNN networks performed well. I have only compared these for daily predictions which do not have a higher margin of error. Predictions for larger time frames require further attention.
 
@@ -334,7 +330,7 @@ live temperature data from https://noaa.gov to pull electricity data.
 
 __Current progress (GIF):__
 
-<img src="images/forecasting/demo.gif">
+<img src="/images/demo.gif">
 
 
 ### Currently working on :
