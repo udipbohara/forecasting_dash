@@ -34,7 +34,7 @@ The Electricity Data can be found in the [U.S Energy Information Administration(
 
 The energy demand data is available in thousand mega-watthours and is avwailable hourly from 2015. 
 
-__Note__: The consumption is given in Thousand $MWh$. However, I am going to refer it as just MWh in this project for the sake of simplicity.
+__Note__: The consumption is given in Thousand $MWh$. However, I am going to refer it as just MWh in this project for the sake of simplicity. Also, in time-series economerics, forecasted is different than predicted. Here, I have used them interchangeably. But, the general convention is that economoetric approaches use the term 'forecast' whereas machine learning use the term 'predict' and they are considered two different things. 
 
 <img src="/images/1_a.png">
 
