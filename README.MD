@@ -198,10 +198,9 @@ I decided to add seasonality for every 7, 150 and 365 days.
 
 7 day seasonality can be explicitly given to the model but the other seasonalities need to be sent as exogenous values in [pmdarima](https://alkaline-ml.com/pmdarima/0.9.0/modules/generated/pyramid.arima.auto_arima.html)
 
-The convention is to add anywhere from 1 to 7 fourier terms. Doing a gridsearch on it, I found the optimal parameters to be 4 
 
 
-I decided to add two more seasonal components 636(Summer component) and 516(Winter component). These are highly parametric. I also decided to add weather data (temperature) as exogenous variables as we can clearly see the impact of temperature on eletricity consumption. 
+I decided to add two more seasonal components 365.5 and 150 after taking the look at the autocorrelation plots. These are highly parametric. I also decided to add weather data (temperature) as exogenous variables as we can clearly see the impact of temperature on eletricity consumption. 
 
 Here is the snippet of how it was done: __Note__: I have used daily data from 2015 to 2020 for training and testing according to the parameters. So there is a large amount of data to be trained on. 
 
