@@ -8,6 +8,17 @@ Time-Series Forecasting is a very relevant business problem that can be highly e
 
 This app takes EIA data from all the regions from the US for electricity demand and uses econometric modeling for forecasting for the following regions
 
+<div>
+    <center>
+    <img src="/images/main.png" width="500"/>
+        <br>
+     <text><b> Fig: Different Regions and their Corresponding States </b> <br> 
+         <i> (Source: https://www.eia.gov)</i>
+     </text>
+    </center>
+</div>
+
+
 Here is a json file I have created for each region and its corresponding states. 
 ```json
 [
@@ -315,6 +326,9 @@ After finishing the modeling, I decided to include the functionality to an app i
 
 This Interactive app utilizes data from https://www.eia.gov/opendata/ API to pull live electricity consumption data.<br>
 live temperature data from https://noaa.gov to pull electricity data. 
+
+To run the app, Head over to part2_DashAPP and download/fork it. Install the requirements to your venmo and run app.py
+
 
 
 ### Features/Tasks Completed:
